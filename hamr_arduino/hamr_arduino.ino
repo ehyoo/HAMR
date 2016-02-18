@@ -38,7 +38,7 @@ int readings[NUMREADINGS];
 
 
 void setup() {
-  Serial.begin(9600);       //establishimg serial communication at 115600 baud
+  Serial.begin(9600);       //establishimg serial communication at 9600 baud
 
   // Set DD motor driver pins as outputs
   pinMode(PIN_DD_EN, OUTPUT);
@@ -62,8 +62,8 @@ void setup() {
   //digitalWrite(PIN_M1_ENCODER_OUTB, HIGH);
   attachInterrupt(PIN_M1_ENCODER_OUTA, rencoderA_M1, CHANGE);  
   attachInterrupt(PIN_M1_ENCODER_OUTB, rencoderB_M1, CHANGE);  
-
-  attachInterrupt(PIN_M2_ENCODER_OUTA, rencoder_M2, CHANGE);  
+  attachInterrupt(PIN_M2_ENCODER_OUTA, rencoderA_M2, CHANGE);  
+  attachInterrupt(PIN_M2_ENCODER_OUTB, rencoderB_M2, CHANGE);  
   attachInterrupt(PIN_M3_ENCODER_OUTA, rencoder_M3, CHANGE);  
 
   for(int i=0; i<NUMREADINGS; i++)   readings[i] = 0;  
@@ -88,14 +88,13 @@ void setup() {
 
 unsigned long lastMilli = 0;                   
 unsigned long lastMilliPrint = 0;              
-float speed_req = 1.0;              // Set Point
+float speed_req = -0.5;              // Set Point
 float speed_act_M1 = 0.0;           //actual value
 float speed_act_M2 = 0.0;           //actual value
 float speed_act_M3 = 0.0;           //actual value
 int PWM_M1 = 0; // PWM value for M1
 int PWM_M2 = 0; // PWM value for M2
 int PWM_M3 = 0; // PWM value for M3        
-
 int interrupt_M1_A = 0;
 int interrupt_M1_B = 0;
 int interrupt_M2_A = 0;
@@ -108,9 +107,6 @@ volatile long curr_count_M2 = 0; // M3 encoder revolution counter
 volatile long prev_count_M2 = 0; // M1 encoder revolution counter
 volatile long curr_count_M3 = 0; // M2 encoder revolution counter
 volatile long prev_count_M3 = 0; // M3 encoder revolution counter
-
-float Kp = 15.0;          //setting Kp  
-float Kd = 0.0;            //setting Kd
 
 void doDemo() {
     if (curr_count_M1/48 < 100) {
@@ -165,38 +161,8 @@ void set_speed(int pwm_val, int pin_driver_inA, int pin_driver_inB, int pin_pwm)
   analogWrite(pin_pwm, abs(pwm_val));
 }
 
-void loop() {
-  //getParam();
-  // check keyboard
-  //doDemo();
 
 
-  if((millis()-lastMilli) >= LOOPTIME) {                                                     // enter timed loop
-    lastMilli = millis();
-
-    // calculate speed
-    getMotorData(&speed_act_M1, &curr_count_M1, &prev_count_M1);
-    //getMotorData(speed_act_M2, curr_count_M2, prev_count_M2);
-    //getMotorData(speed_act_M3, curr_count_M3, prev_count_M3);         
-
-    // compute PWM value
-    updatePid(&PWM_M1, speed_req, speed_act_M1);
-    //PWM_M2 = updatePid(PWM_M2, speed_req, speed_act_M2);
-    //PWM_M3 = updatePid(PWM_M3, speed_req, speed_act_M3);
-    
-    // send PWM to motor
- //   Serial.print("PWM M1: ");
- //   Serial.println(PWM_M1);
-
-    set_speed(PWM_M1, PIN_M1_DRIVER_INA, PIN_M1_DRIVER_INB, PIN_M1_DRIVER_PWM);
-    //analogWrite(PIN_M2_DRIVER_PWM, PWM_M2);
-    //analogWrite(PIN_M3_DRIVER_PWM, PWM_M3);
-
-  }
- 
-  
-  //printMotorInfo();    
-}
 
 void getMotorData(float* speed_act, volatile long* curr_count, volatile long* prev_count) { // calculate speed
   // Calculating the speed using encoder count
@@ -204,21 +170,76 @@ void getMotorData(float* speed_act, volatile long* curr_count, volatile long* pr
   
  // int count_diff = curr_count - prev_count;
  // float distance = ((float) count_diff / TICKS_PER_REV)
-  //speed_act = (((float) (curr_count - prev_count) / TICKS_PER_REV) * DIST_PER_REV) / ((float) LOOPTIME / 1000.0);
+  //*speed_act = (((float) (curr_count - prev_count) / TICKS_PER_REV) * DIST_PER_REV) / ((float) LOOPTIME / 1000.0);
   *speed_act = (((float) (*curr_count - *prev_count) / 1632.0) * DIST_PER_REV) / (100.0 / 1000.0);
-  Serial.println(*speed_act);
+  Serial.println(round(100* *speed_act));
   *prev_count = *curr_count;                                           //setting count value to last count
 }
 
-void updatePid(int* command, float targetValue, float currentValue) {      // compute PWM value
-  float pidTerm = 0.0;                                                   // PID correction
-  float error = 0.0;                                  
+float Kp = 60.0;          //setting Kp 
+float Ki = 0.0; 
+float Kd = 0.0;            //setting Kd
+float error_acc_M1 = 0.0;
+float error_acc_M2 = 0.0;
+
+
+void updatePid(int* command, float targetValue, float currentValue, float* error_acc) {
+  float pidTerm = 0.0;   
+  float error = 0.0;        
+  float error_acc_limit = 20.0;
+                          
   static float last_error = 0.0;                             
-  error = abs(targetValue) - abs(currentValue); 
-  pidTerm = (Kp * error) + (Kd * (error - last_error));                            
+  error = targetValue - currentValue; 
+  *error_acc += error;
+
+  pidTerm = (Kp * error) + (Kd * (error - last_error)) + (Ki * (*error_acc));      
+
+  if (*error_acc > error_acc_limit) {
+    // Anti integrator windup using clamping
+    *error_acc = error_acc_limit; 
+  }
+                        
   last_error = error;
   *command = constrain(round(*command + pidTerm), -255, 255);
 }
+
+void loop() {
+  //getParam();
+  // check keyboard
+  //doDemo();
+
+
+  if((millis()-lastMilli) >= LOOPTIME) {      
+    Serial.println("start");
+    Serial.println(speed_act_M1);
+    Serial.println(0);
+    Serial.println(0);
+    Serial.println(millis()-lastMilli);
+    
+    // enter timed loop
+    lastMilli = millis();
+    
+    // calculate speed
+    getMotorData(&speed_act_M1, &curr_count_M1, &prev_count_M1);
+    getMotorData(&speed_act_M2, &curr_count_M2, &prev_count_M2);
+    //getMotorData(speed_act_M3, curr_count_M3, prev_count_M3);         
+
+    // compute PWM value
+    updatePid(&PWM_M1, speed_req, speed_act_M1, &error_acc_M1);
+    updatePid(&PWM_M2, speed_req, speed_act_M2, &error_acc_M2);
+    //PWM_M3 = updatePid(PWM_M3, speed_req, speed_act_M3);
+
+    set_speed(PWM_M1, PIN_M1_DRIVER_INA, PIN_M1_DRIVER_INB, PIN_M1_DRIVER_PWM);
+    set_speed(PWM_M2, PIN_M2_DRIVER_INA, PIN_M2_DRIVER_INB, PIN_M2_DRIVER_PWM);
+
+    read_serial();
+    
+  }
+
+}
+
+
+
 
 
 
@@ -246,14 +267,24 @@ void rencoderB_M1()  {
   if (interrupt_M1_A != interrupt_M1_B) curr_count_M1++; // encoderB changed before encoderA -> reverse
   else                                  curr_count_M1--; // encoderA changed before encoderB -> forward
 }
+void rencoderA_M2()  {
+  int encoderA_pin = PIN_M2_ENCODER_OUTA;
+  int encoderB_pin = PIN_M2_ENCODER_OUTB;
+  // Record rising or falling edge from encoder
+  interrupt_M2_A = digitalRead(encoderA_pin);
 
-void rencoder_M2()  {
-  int encoder_pin = PIN_M2_ENCODER_OUTB;
+  if (interrupt_M2_A != interrupt_M2_B) curr_count_M2--; // encoderA changed before encoderB -> forward
+  else                                  curr_count_M2++; // encoderB changed before encoderA -> reverse
+}
 
-  if (digitalRead(encoder_pin)==HIGH)    
-  curr_count_M2--;                // if encoder pin 2 = HIGH then count --
-  else                     
-  curr_count_M2++;                // if encoder pin 2 = LOW then count ++
+void rencoderB_M2()  {
+  int encoderA_pin = PIN_M2_ENCODER_OUTA;
+  int encoderB_pin = PIN_M2_ENCODER_OUTB;
+  // Record rising or falling edge from encoder
+  interrupt_M2_B = digitalRead(encoderB_pin);
+  
+  if (interrupt_M2_A != interrupt_M2_B) curr_count_M2++; // encoderB changed before encoderA -> reverse
+  else                                  curr_count_M2--; // encoderA changed before encoderB -> forward
 }
 
 void rencoder_M3()  {
@@ -263,6 +294,34 @@ void rencoder_M3()  {
   curr_count_M3--;                // if encoder pin 2 = HIGH then count --
   else                     
   curr_count_M3++;                // if encoder pin 2 = LOW then count ++
+}
+
+
+float* current_serial_var;
+
+// Read Serial from USB and adjust variables
+void read_serial(){
+  if(Serial.available()){
+    String str = Serial.readString();
+    
+    if(str == "p"){
+        current_serial_var = &Kp;
+    } 
+    else if(str == "i"){
+        current_serial_var = &Ki;
+    }
+    else if(str == "d"){
+        current_serial_var = &Kd;
+    } 
+    else if(str == "s"){
+        current_serial_var = &speed_req;
+    }
+    else {
+        *current_serial_var = str.toFloat();
+        Serial.print("Variable was changed to:");
+        Serial.println(*current_serial_var);
+    }
+  }
 }
 
 

@@ -13,7 +13,7 @@ from time import gmtime, strftime
 import threading
 
 # Important! Ensure these variables are correct when running
-port = 'COM4'
+port = 'COM6'
 baudrate = 115200
 
 # Open new file in the given directory. Create new directory if it does not exist
@@ -44,8 +44,6 @@ def query_user():
         device.write(str(data))
 
 
-
-
 def read_loop():
     global read_finishedA
     global xdata
@@ -63,7 +61,7 @@ def read_loop():
             xdata[time_ptr] = data[3] / 1000.0
             # print xdata[time_ptr]
             ydata[time_ptr] = data[0]
-            log.write(str(data[3]) + ', ' + str(data_sizeta[0]) + "\n")
+            log.write(str(data[3]) + ', ' + str(data[0]) + "\n")
             time_ptr = 0 if time_ptr == 999 else time_ptr + 1
 
     read_finished = True
@@ -82,35 +80,7 @@ ydata = np.zeros(data_size) - 1
 lines = [axis.plot(ydata, '.')[0] for axis in axes]
 for axis in axes:
     axis.set_ylim(-2,2)
-
 xmin = 0 
-
-#update rate
-update_rate = 30 # interval in ms betweeen updates. this is not that accurate so don't use it for precise timing
-increment = update_rate / 1000.0 # won't be needed for live update
-
-# initial state for blitting
-def init():
-    for j in range(0,numplots):
-        lines[j].set_ydata([])
-        lines[j].set_xdata([])
-        # axes[j].set_xlim(xmin, xmin + 10)
-
-    return tuple([line for line in lines])
-
-def update(data):
-    global xdata 
-    global ydata
-    global time_ptr
-
-    # these should be the only lines needed for live update
-    lines[0].set_xdata(xdata)
-    lines[0].set_ydata(ydata)
-    axes[0].set_xlim(0,10)
-    xmax = max(xdata)
-    axes[0].set_xlim(xmax-10, xmax) # plot last ten seconds
-    return tuple([line for line in lines])
-
 
 # start thread
 t1 = threading.Thread(target=read_loop) # to pass in parameters, need to subclass
@@ -119,15 +89,8 @@ t1.start()
 # t2 = threading.Thread(target=query_user) # to pass in parameters, need to subclass
 # t2.start()
 
-# redraw callback
-def onresize(event):
-    plt.draw()
 
-fig.canvas.mpl_connect('button_press_event', onresize)
-ani = animation.FuncAnimation(fig, update, init_func = init, interval=update_rate, blit=True)
-plt.show()
 
-plotting = False
 
 # cleanup
 # don't close IO devices until serial thread has stopped

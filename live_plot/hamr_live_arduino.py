@@ -13,7 +13,8 @@ from time import gmtime, strftime
 import threading
 
 # Important! Ensure these variables are correct when running
-port = 'COM4'
+#port = 'COM6'
+port = '/dev/tty.usbmodem1421' 
 baudrate = 115200
 
 # Open new file in the given directory. Create new directory if it does not exist
@@ -38,34 +39,27 @@ read_finished = False
 plotting = True
 time_ptr = 0
 
-def query_user():
-    while(1):
-        data = input("enter velocity value: ")
-        device.write(str(data))
-
-
-
-
 def read_loop():
     global read_finishedA
     global xdata
     global ydata
+    global y2data
     global time_ptr
 
     while plotting: # time.time() - start_time < 4
         line = device.readline()   # read a '\n' terminated line
-        # print line
-        if line == 'start\r\n': # read the beginning of transmission
+        if line == 'start\n': # read the beginning of transmission
             data = [0,0,0,0]
             for j in range(4): # read 5 data values and one time value in millis
                 data[j] = float(device.readline()) #convert to a 32 bit integer
-            print data
+            #print data
             xdata[time_ptr] = data[3] / 1000.0
             # print xdata[time_ptr]
             ydata[time_ptr] = data[0]
-            log.write(str(data[3]) + ', ' + str(data_sizeta[0]) + "\n")
-            time_ptr = 0 if time_ptr == 999 else time_ptr + 1
+            y2data[time_ptr] = data[1]
 
+            log.write(str(data[3]) + ' ' + str(data[0]) + "\n")
+            time_ptr = 0 if time_ptr == 999 else time_ptr + 1
     read_finished = True
 
 # initialize plots
@@ -77,13 +71,15 @@ axes = [plt.subplot(201 + 10 * np.ceil(numplots/2.0) + x) for x in range(0, nump
 data_size = 1000 # the max number of points to plot at one time
 xdata = np.linspace(0, 9.99, num = data_size)
 ydata = np.zeros(data_size) - 1
+y2data = np.zeros(data_size) - 1
 
 # set axis limits
 lines = [axis.plot(ydata, '.')[0] for axis in axes]
 for axis in axes:
-    axis.set_ylim(-2,2)
+    axis.set_ylim(0.0,1.0)
 
 xmin = 0 
+
 
 #update rate
 update_rate = 30 # interval in ms betweeen updates. this is not that accurate so don't use it for precise timing
@@ -93,6 +89,7 @@ increment = update_rate / 1000.0 # won't be needed for live update
 def init():
     for j in range(0,numplots):
         lines[j].set_ydata([])
+        lines[j].set_ydata([])
         lines[j].set_xdata([])
         # axes[j].set_xlim(xmin, xmin + 10)
 
@@ -101,14 +98,20 @@ def init():
 def update(data):
     global xdata 
     global ydata
+    global y2data
     global time_ptr
 
     # these should be the only lines needed for live update
     lines[0].set_xdata(xdata)
     lines[0].set_ydata(ydata)
+    lines[1].set_xdata(xdata)
+    lines[1].set_ydata(y2data)
+
     axes[0].set_xlim(0,10)
+    axes[1].set_xlim(0,10)
     xmax = max(xdata)
     axes[0].set_xlim(xmax-10, xmax) # plot last ten seconds
+    axes[1].set_xlim(xmax-10, xmax) # plot last ten seconds
     return tuple([line for line in lines])
 
 
@@ -116,15 +119,12 @@ def update(data):
 t1 = threading.Thread(target=read_loop) # to pass in parameters, need to subclass
 t1.start()
 
-# t2 = threading.Thread(target=query_user) # to pass in parameters, need to subclass
-# t2.start()
-
 # redraw callback
 def onresize(event):
     plt.draw()
 
 fig.canvas.mpl_connect('button_press_event', onresize)
-ani = animation.FuncAnimation(fig, update, init_func = init, interval=update_rate, blit=True)
+ani = animation.FuncAnimation(fig, update, init_func = init, interval=update_rate, blit=False)
 plt.show()
 
 plotting = False
@@ -135,8 +135,7 @@ while not read_finished:
    pass
 
 device.close()
-log.close()
+# log.close()
 
 print 'Exit successful'
 t1.join()
-t2.join()

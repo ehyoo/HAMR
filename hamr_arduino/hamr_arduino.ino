@@ -1,5 +1,4 @@
 
-
 /**********************************************
  * Pin Definitions
  * 
@@ -33,12 +32,12 @@
 #define WHEEL_DIAMETER  0.060325 // in meters (2 3/8" diameter)   
 #define DIST_PER_REV    (PI*WHEEL_DIAMETER)  // circumference of wheel in meters
 #define NUMREADINGS     10
-#define LOOPTIME        100 // in ms      
+#define LOOPTIME        50.0 // in ms      
 int readings[NUMREADINGS];
-
+unsigned long startMilli = 0;
 
 void setup() {
-  Serial.begin(9600);       //establishimg serial communication at 9600 baud
+  Serial.begin(115200);       //establishimg serial communication at 9600 baud
 
   // Set DD motor driver pins as outputs
   pinMode(PIN_DD_EN, OUTPUT);
@@ -80,15 +79,23 @@ void setup() {
 
 
   analogWrite(PIN_M1_DRIVER_PWM, 0);
-  //analogWrite(PIN_M2_DRIVER_PWM, 50);
+  analogWrite(PIN_M2_DRIVER_PWM, 0);
   //analogWrite(PIN_M3_DRIVER_PWM, 255);
-}
 
+//  Keyboard.begin();
+//  char inChar = '0';
+//  while(inChar != 's') {
+//    inChar = Serial.read();
+//  }
+//  
+  delay(2000);
+  startMilli = millis();
+}
 
 
 unsigned long lastMilli = 0;                   
 unsigned long lastMilliPrint = 0;              
-float speed_req = -0.5;              // Set Point
+float speed_req = 0.5;              // Set Point
 float speed_act_M1 = 0.0;           //actual value
 float speed_act_M2 = 0.0;           //actual value
 float speed_act_M3 = 0.0;           //actual value
@@ -171,36 +178,38 @@ void getMotorData(float* speed_act, volatile long* curr_count, volatile long* pr
  // int count_diff = curr_count - prev_count;
  // float distance = ((float) count_diff / TICKS_PER_REV)
   //*speed_act = (((float) (curr_count - prev_count) / TICKS_PER_REV) * DIST_PER_REV) / ((float) LOOPTIME / 1000.0);
-  *speed_act = (((float) (*curr_count - *prev_count) / 1632.0) * DIST_PER_REV) / (100.0 / 1000.0);
-  Serial.println(round(100* *speed_act));
+  *speed_act = (((float) (*curr_count - *prev_count) / 1632.0) * DIST_PER_REV) / (LOOPTIME / 1000.0);
+  //Serial.println(round(100* *speed_act));
   *prev_count = *curr_count;                                           //setting count value to last count
 }
 
-float Kp = 60.0;          //setting Kp 
+float Kp = 250.0;          //setting Kp 
 float Ki = 0.0; 
 float Kd = 0.0;            //setting Kd
 float error_acc_M1 = 0.0;
 float error_acc_M2 = 0.0;
+float error_prev_M1 = 0.0;
+float error_prev_M2 = 0.0;
 
-
-void updatePid(int* command, float targetValue, float currentValue, float* error_acc) {
+void updatePid(int* command, float targetValue, float currentValue, float* error_acc, float* prev_error) {
   float pidTerm = 0.0;   
   float error = 0.0;        
+  
   float error_acc_limit = 20.0;
                           
-  static float last_error = 0.0;                             
   error = targetValue - currentValue; 
   *error_acc += error;
 
-  pidTerm = (Kp * error) + (Kd * (error - last_error)) + (Ki * (*error_acc));      
+  pidTerm = (Kp * error) + (Kd * (error - *prev_error)) + (Ki * (*error_acc));      
 
   if (*error_acc > error_acc_limit) {
     // Anti integrator windup using clamping
     *error_acc = error_acc_limit; 
-  }
-                        
-  last_error = error;
-  *command = constrain(round(*command + pidTerm), -255, 255);
+  }                      
+  *prev_error = error;
+  
+  //*command = constrain(round(*command + pidTerm), -255, 255);
+  *command = constrain(round(pidTerm), -255, 255);
 }
 
 void loop() {
@@ -209,13 +218,14 @@ void loop() {
   //doDemo();
 
 
-  if((millis()-lastMilli) >= LOOPTIME) {      
-    Serial.println("start");
-    Serial.println(speed_act_M1);
+  if((millis()-lastMilli) >= LOOPTIME) {  
+     
+    Serial.print("start\n");
+    Serial.println(speed_act_M1, 4);
+    Serial.println(speed_act_M2, 4);
     Serial.println(0);
-    Serial.println(0);
-    Serial.println(millis()-lastMilli);
-    
+    Serial.println(millis() - startMilli);
+    //Serial.println(PWM_M1);
     // enter timed loop
     lastMilli = millis();
     
@@ -225,15 +235,14 @@ void loop() {
     //getMotorData(speed_act_M3, curr_count_M3, prev_count_M3);         
 
     // compute PWM value
-    updatePid(&PWM_M1, speed_req, speed_act_M1, &error_acc_M1);
-    updatePid(&PWM_M2, speed_req, speed_act_M2, &error_acc_M2);
+    updatePid(&PWM_M1, speed_req, speed_act_M1, &error_acc_M1, &error_prev_M1);
+    updatePid(&PWM_M2, speed_req, speed_act_M2, &error_acc_M2,&error_prev_M2);
     //PWM_M3 = updatePid(PWM_M3, speed_req, speed_act_M3);
 
     set_speed(PWM_M1, PIN_M1_DRIVER_INA, PIN_M1_DRIVER_INB, PIN_M1_DRIVER_PWM);
     set_speed(PWM_M2, PIN_M2_DRIVER_INA, PIN_M2_DRIVER_INB, PIN_M2_DRIVER_PWM);
 
     read_serial();
-    
   }
 
 }
@@ -318,8 +327,8 @@ void read_serial(){
     }
     else {
         *current_serial_var = str.toFloat();
-        Serial.print("Variable was changed to:");
-        Serial.println(*current_serial_var);
+        //Serial.print("Variable was changed to:");
+        //Serial.println(*current_serial_var);
     }
   }
 }

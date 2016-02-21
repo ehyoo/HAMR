@@ -124,8 +124,8 @@ def read_loop():
 
             if len(xdata) < 1000:
                 xdata = np.append(xdata, data[0] / 1000.0)
-                ydata0 = np.append(ydata0, data[1] / 1000.0)
-                ydata1 = np.append(ydata1, data[2] / 1000.0)
+                ydata0 = np.append(ydata0, data[1])
+                ydata1 = np.append(ydata1, data[2])
 
             else:
                 xd = np.copy(xdata)
@@ -133,11 +133,11 @@ def read_loop():
                 xdata = np.roll(xd, -1)
 
                 yd0 = np.copy(ydata0)
-                yd0[0] = data[1] / 1000.0
+                yd0[0] = data[1]
                 ydata0 = np.roll(yd0, -1)
 
                 yd1 = np.copy(ydata1)
-                yd1[0] = data[2] / 1000.0
+                yd1[0] = data[2]
                 ydata1 = np.roll(yd1, -1)
 
 

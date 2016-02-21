@@ -19,7 +19,7 @@ from matplotlib.widgets import Button
 
 # add code to arduino to stop sending serial data if not connected! (change "send" to "stop")
 # Important! Ensure these variables are correct when running
-port = 'COM6'
+port = 'COM4'
 baudrate = 250000
 
 serial_first_line = 'st\n'
@@ -118,9 +118,9 @@ def read_loop():
             
             # do something with data
 
-            print len(xdata)
-            print len(ydata0)
-            print len(ydata1)
+            # print len(xdata)
+            # print len(ydata0)
+            # print len(ydata1)
 
             if len(xdata) < 1000:
                 xdata = np.append(xdata, data[0] / 1000.0)

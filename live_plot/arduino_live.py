@@ -19,7 +19,7 @@ from matplotlib.widgets import Button
 
 # add code to arduino to stop sending serial data if not connected! (change "send" to "stop")
 # Important! Ensure these variables are correct when running
-port = 'COM4'
+port = 'COM6'
 baudrate = 250000
 
 serial_first_line = 'st\n'
@@ -121,7 +121,6 @@ def read_loop():
             # print len(xdata)
             # print len(ydata0)
             # print len(ydata1)
-
             if len(xdata) < 1000:
                 xdata = np.append(xdata, data[0] / 1000.0)
                 ydata0 = np.append(ydata0, data[1])
@@ -130,15 +129,19 @@ def read_loop():
             else:
                 xd = np.copy(xdata)
                 xd[0]  = data[0] / 1000.0
-                xdata = np.roll(xd, -1)
+                xd = np.roll(xd, -1)
 
                 yd0 = np.copy(ydata0)
                 yd0[0] = data[1]
-                ydata0 = np.roll(yd0, -1)
+                yd0 = np.roll(yd0, -1)
 
                 yd1 = np.copy(ydata1)
                 yd1[0] = data[2]
-                ydata1 = np.roll(yd1, -1)
+                yd1 = np.roll(yd1, -1)
+
+                xdata = xd
+                ydata0 = yd0
+                ydata1 = yd1
 
 
             log.write(','.join(map(str, data)) + "\n")
@@ -232,7 +235,7 @@ for axis in axes:
     axis.set_ylim(-2.0,2.0)
 
 xmin = 0 
-update_rate = 30
+update_rate = 100
 
 
 
@@ -242,7 +245,7 @@ def init():
     for j in range(0,numplots):
         lines[j].set_ydata([])
         lines[j].set_xdata([])
-        # axes[j].set_xlim(xmin, xmin + 10)
+        axes[j].set_xlim(xmin, xmin + 10)
     return tuple([line for line in lines])
 
 def update(data):
@@ -272,7 +275,7 @@ def main():
     reading = False 
     device = serial_initialize(port, baudrate, timeout_=2, write_timeout_=2)
 
-    # ani = animation.FuncAnimation(fig, update, init_func = init, interval=update_rate, blit=blit)
+    ani = animation.FuncAnimation(fig, update, init_func = init, interval=update_rate, blit=blit)
     plt.show()
 
     continue_reading = False  # tell thread_read to exit

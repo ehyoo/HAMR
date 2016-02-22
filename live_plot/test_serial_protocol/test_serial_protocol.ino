@@ -27,10 +27,10 @@ void loop() {
 
    if(send_data){
        Serial.println("st");
-       Serial.println(random(1, 10));
-       Serial.println(sin_table[i]);
-       Serial.println(1);
        Serial.println(millis() - start_time); // total time
+       Serial.println(.7);
+       Serial.println(1.1);
+       Serial.println(1);
        i = i == 199 ? 0: i + 1;
    }
 

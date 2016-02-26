@@ -30,11 +30,7 @@
 #define PIN_M3_DRIVER_PWM 2
 
 // PID control defines
-#define TICKS_PER_REV_ddrive  1632.0  // number of encoder ticks in one full rotation on diff drive (ddrive) motor
-#define TICKS_PER_REV_turret  3000.0  // turret (turret) motor (250:1 gear ratio * 12)
-#define WHEEL_DIAMETER    0.060325 // in meters (2 3/8" diameter)   
-#define DIST_PER_REV      (PI*WHEEL_DIAMETER)  // circumference of wheel in meters
-#define LOOPTIME          50.0 // in ms      
+
 
 // For live-plotting
 unsigned long startMilli = 0;

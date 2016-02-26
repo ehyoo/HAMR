@@ -1,7 +1,9 @@
 #include "motor.h"
+#include "Arduino.h"
 
-#define DIR_FORWARD 1
-#define DIR_BACKWARD 0
+
+
+
 
 void set_direction(int pin_driver_inA, int pin_driver_inB, bool dir) {
   digitalWrite(pin_driver_inA, !dir);
@@ -19,6 +21,7 @@ void set_speed(int pwm_val, int pin_driver_inA, int pin_driver_inB, int pin_pwm)
 
   analogWrite(pin_pwm, abs(pwm_val));
 }
+
 void measure_speed(float* speed_act, volatile long* curr_count, volatile long* prev_count) { // calculate speed
   // Calculating the speed using encoder count
  // int count_diff = curr_count - prev_count;

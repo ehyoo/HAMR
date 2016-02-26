@@ -1,4 +1,6 @@
 #include "pid.h"
+#include "Arduino.h"
+#include "motor.h"
 
 float update_pid(PID_Vars* pid_vars, int* command, float targetValue, float currentValue) {
 

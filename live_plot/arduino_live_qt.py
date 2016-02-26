@@ -1,14 +1,11 @@
-# Things to do
-# get everyone's laptops installed with software 
-# update arduino_live to allow changing values on the robot
-# start GUI so that code does not need to be edited
-
+# I could move the serial commands to another module. the readloop commands
 import time
 import os
 from time import gmtime, strftime
 import threading
 import platform
 import signal
+import timeit
 
 import serial
 
@@ -32,6 +29,7 @@ if platform.system() is 'Windows':
     serial_first_line = 'st\r\n'
     blit = True
 
+# http://pyserial.readthedocs.org/en/latest/tools.html. Use this to automatically detect arduino
 
 # Open new file in the given directory. Create new directory if it does not exist
 # save data in CSV format (works automatically in excel)
@@ -97,13 +95,14 @@ def read_loop():
     global continue_reading
 
     global xdata
-    global ydata
+    global ydata0
+    global ydata1
 
     log = open_file('hamr', 'test_data')
 
     num_data_points = 4
     reading = True
-    print "read loop"
+
     while device.is_open and continue_reading: # need to check if its open
         try:
             line = device.readline()    # read a \n terminated line
@@ -122,37 +121,35 @@ def read_loop():
             # do something with data
 
             # print len(xdata)
-            # print len(ydata[0])
-            # print len(ydata[1])
-            # print data 
-            # if len(xdata) < 1000:
-            #     xdata = np.append(xdata, data[0] / 1000.0)
-            #     ydata[0] = np.append(ydata[0], data[1])
-            #     ydata[1] = np.append(ydata[1], data[2])
+            # print len(ydata0)
+            # print len(ydata1)
+            if len(xdata) < 1000:
+                xdata = np.append(xdata, data[0] / 1000.0)
+                ydata0 = np.append(ydata0, data[1])
+                ydata1 = np.append(ydata1, data[2])
 
-            # if len(xdata) >= 1000:
-            xd = np.copy(xdata)
-            xd[0]  = data[0] / 1000.0
-            xd = np.roll(xd, -1)
+            else:
+                xd = np.copy(xdata)
+                xd[0]  = data[0] / 1000.0
+                xd = np.roll(xd, -1)
 
-            yd0 = np.copy(ydata[0])
-            yd0[0] = data[1]
-            yd0 = np.roll(yd0, -1)
+                yd0 = np.copy(ydata0)
+                yd0[0] = data[1]
+                yd0 = np.roll(yd0, -1)
 
-            yd1 = np.copy(ydata[1])
-            yd1[0] = data[2]
-            yd1 = np.roll(yd1, -1)
+                yd1 = np.copy(ydata1)
+                yd1[0] = data[2]
+                yd1 = np.roll(yd1, -1)
 
-            xdata = xd
-            ydata[0] = yd0
-            ydata[1] = yd1
+                xdata = xd
+                ydata0 = yd0
+                ydata1 = yd1
 
 
             log.write(','.join(map(str, data)) + "\n")
 
     log.close()
     reading = False
-    print "end read loop"
 
 #### update graph even if xvalue is below 10
 # connect to com port 
@@ -208,33 +205,6 @@ def callback_log_data(event):
     
     plt.draw()
 
-# PLOTTING
-# initialize plots
-numplots = 5
-fig = plt.figure()
-plt.subplots_adjust(left = .2, bottom=.2)
-
-# create numplots subplots
-height = 2
-width = np.ceil(numplots/2.0)
-m_axes = [plt.subplot(int(100 * height + 10 * width + x + 1)) for x in range(numplots)]
-
-# initialize empty arrays of size 1000. These will not plot because the yvalue is set to None and should be overwritten
-data_size = 1000 # the max number of points to plot at one time
-
-xdata = np.zeros(1000)
-ydata = [np.full(1000, None) for x in range(numplots)]
-
-# set axis limits
-lines = [m_axes[x].plot(ydata[x], '-')[0] for x in range(numplots)]
-for x in range(numplots):
-    m_axes[x].set_ylim(-1.5,1.5)
-    m_axes[x].set_title('Plot ' + str(x))
-
-xmin = 0 
-update_rate = 50
-
-
 # GUI
 plt.subplots_adjust(bottom=0.2)
 button_connect = Button(plt.axes([0.1, 0.05, 0.15, 0.075]), 'Connect')
@@ -243,38 +213,59 @@ button_connect.on_clicked(callback_connect)
 button_log_data = Button(plt.axes([0.3, 0.05, 0.15, 0.075]), 'Log Data')
 button_log_data.on_clicked(callback_log_data)
 
+# button_log_data = Button(plt.axes([0.3, 0.05, 0.15, 0.075]), 'Log Data')
+# button_log_data.on_clicked(callback_log_data)
+
+# PLOTTING
+
+# initialize plots
+numplots = 2
+fig = plt.figure()
+axes = [plt.subplot(201 + 10 * np.ceil(numplots/2.0) + x) for x in range(0, numplots)]
+
+# data sets
+data_size = 1000 # the max number of points to plot at one time
+xdata = np.linspace(0, 9.99, num = data_size)
+ydata0 = np.zeros(data_size) - 1
+ydata1 = np.zeros(data_size) - 1
+
+xdata = [0]
+ydata0 = [0]
+ydata1 = [0]
+
+# set axis limits
+lines = [axis.plot(ydata0, '-')[0] for axis in axes]
+for axis in axes:
+    axis.set_ylim(-2.0,2.0)
+
+xmin = 0 
+update_rate = 30
+
 
 # initial state for blitting
 def init():
     for j in range(0,numplots):
         lines[j].set_ydata([])
         lines[j].set_xdata([])
-        m_axes[j].set_xlim(xmin, xmin + 10)
+        axes[j].set_xlim(xmin, xmin + 10)
     return tuple([line for line in lines])
 
-pause = True
-def update_animation(data):
+def update(data):
     global xdata 
-    global ydata
+    global ydata0
+    global ydata1
+
     # these should be the only lines needed for live update
+    lines[0].set_xdata(xdata)
+    lines[1].set_xdata(xdata)
+    lines[0].set_ydata(ydata0)
+    lines[1].set_ydata(ydata1)
 
-    for i in range(numplots):
-        lines[i].set_xdata(xdata)
-        lines[i].set_ydata(ydata[i])
-        m_axes[i].set_xlim(0,10)
-        xmax = max(xdata)
-        m_axes[i].set_xlim(xmax-10, xmax)
-
-    # lines[0].set_xdata(xdata)
-    # lines[1].set_xdata(xdata)
-    # lines[0].set_ydata(ydata[0])
-    # lines[1].set_ydata(ydata[1])
-
-    # m_axes[0].set_xlim(0,10)
-    # m_axes[1].set_xlim(0,10)
-    # xmax = max(xdata)
-    # m_axes[0].set_xlim(xmax-10, xmax) # plot last ten seconds
-    # m_axes[1].set_xlim(xmax-10, xmax) # plot last ten seconds
+    axes[0].set_xlim(0,10)
+    axes[1].set_xlim(0,10)
+    xmax = max(xdata)
+    axes[0].set_xlim(xmax-10, xmax) # plot last ten seconds
+    axes[1].set_xlim(xmax-10, xmax) # plot last ten seconds
     return tuple([line for line in lines])
 
 
@@ -286,7 +277,7 @@ def main():
     reading = False 
     device = serial_initialize(port, baudrate, timeout_=2, write_timeout_=2)
 
-    ani = animation.FuncAnimation(fig, update_animation, init_func = init, interval=update_rate, blit=blit)
+    ani = animation.FuncAnimation(fig, update, init_func = init, interval=update_rate, blit=blit)
     plt.show()
 
     continue_reading = False  # tell thread_read to exit

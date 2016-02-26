@@ -38,8 +38,52 @@
 unsigned long startMilli = 0;
 int send_data = 0;
 
+
+/* IMU CODE */
+#include "I2Cdev.h"
+#include "MPU6050.h"
+
+#if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
+    #include "Wire.h"
+#endif
+
+MPU6050 mimu(0x69); // <-- use for AD0 high
+
+int16_t ax, ay, az;
+int16_t gx, gy, gz;
+
+//constants
+float R2D = 180.0 / M_PI;
+float D2R = 1 / R2D;
+
+//raw IMU variables
+float gyrox;
+float gyroy;
+float gyroz;
+float gyrox_prev;
+float gyroy_prev;
+float gyroz_prev;
+float magx;
+float magy;
+float magz;
+
+float g_scale = 1.17 * (1.0/131.0); // * (M_PI / 180.0);
+int imu_offset[6] = {0, 0, 0, 0, 0, 0}; //this is modified by the calibrate_IMU() function
+
+// calculated IMU variables
+float gyro_angle = 0;
+float gyro_angle_prev = 0;
+float gyro_angle_total = 0;
+
+float mag_angle = 0;
+
+float final_angle;
+float final_angle_prev = 0;
+
+/* END IMU CODE */
+
 void setup() {
-  Serial.begin(250000);       //establishimg serial communication at 9600 baud
+  Serial.begin(250000);       //establishimg serial communication
 
   // Set DD motor driver pins as outputs
   pinMode(PIN_DD_EN, OUTPUT);
@@ -62,7 +106,7 @@ void setup() {
   //digitalWrite(PIN_M1_ENCODER_OUTA, HIGH);                      
   //digitalWrite(PIN_M1_ENCODER_OUTB, HIGH);
   attachInterrupt(PIN_M1_ENCODER_OUTA, rencoderA_M1, CHANGE);  
-  attachInterrupt(PIN_M1_ENCODER_OUTB, rencoderB_M1, CHANGE);
+  attachInterrupt(PIN_M1_ENCODER_OUTB, rencoderB_M1, CHANGE);  
   attachInterrupt(PIN_M2_ENCODER_OUTA, rencoderA_M2, CHANGE);  
   attachInterrupt(PIN_M2_ENCODER_OUTB, rencoderB_M2, CHANGE);  
   attachInterrupt(PIN_M3_ENCODER_OUTA, rencoderA_M3, CHANGE);  
@@ -86,6 +130,25 @@ void setup() {
 
   Serial.println("Arduino Ready"); //needs to be sent to detect that arduino has initialized
   startMilli = millis();
+  
+  /* IMU CODE */
+  #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
+        Wire.begin();
+  #elif I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_FASTWIRE
+        Fastwire::setup(400, true);
+  #endif
+  
+  mimu.initialize();
+
+  Serial.println(accelgyro.testConnection() ? "MPU6050 connection successful" : "MPU6050 connection failed");
+
+  calibrate_IMU();
+
+  //set filter values
+  mimu.setDLPFMode(6);
+    
+  /* END IMU CODE */
+
 }
 
 
@@ -145,7 +208,7 @@ void measure_speed(float* speed_act, volatile long* curr_count, volatile long* p
 void measure_rot_speed(float* speed_act, volatile long* curr_count, volatile long* prev_count) { // calculate speed
   *speed_act = 360.0 * ((*curr_count - *prev_count) / (float) TICKS_PER_REV_turret);
   *prev_count = *curr_count; //setting count value to last count
-//  Serial.println(*speed_act);
+  Serial.println(*speed_act);
 }
 
 /* PID LOOP VARIABLES */
@@ -224,7 +287,36 @@ void loop() {
     }
   }
 
-  if((millis()-lastMilli) >= LOOPTIME) {
+  /* IMU CODE */
+  mimu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+  magx = mpu.getExternalSensorWord(0);
+  magy = mpu.getExternalSensorWord(2);
+  magz = mpu.getExternalSensorWord(4);
+  
+  gyrox = (gx - imu_offset[3]);
+  gyroy = (gy - imu_offset[4]);
+  gyroz = (gz - imu_offset[5]);
+
+  Serial.println(gyrox);
+  Serial.println(gyroy);
+  Serial.println(gyroz);
+  Serial.println(magx);
+  Serial.println(magy);
+  Serial.println(magz);
+  
+  
+  // calculate gyro_angle (only x axis)
+//  integrate_gyro_angle(gyro, gyro_prev); //set prev
+
+//  final_angle = complement * (final_angle_prev + gyro_angle * g_scale) + (1 - complement) * accely_angle * R2D;
+
+  gyro_prev = gyro;
+  final_angle_prev = final_angle;
+  error_prev = error;
+      
+  /* END IMU CODE */
+
+  if((millis()-lastMilli) >= LOOPTIME) { 
     lastMilli = millis();
 
     if(send_data){
@@ -249,7 +341,7 @@ void loop() {
     measure_speed(&speed_act_M1, &curr_count_M1, &prev_count_M1);
     measure_speed(&speed_act_M2, &curr_count_M2, &prev_count_M2);
     measure_rot_speed(&speed_act_M3, &curr_count_M3, &prev_count_M3);         
-//    Serial.println(curr_count_M3);
+    Serial.println(curr_count_M3);
     // compute PWM value
     update_pid("d", &PWM_M1, speed_req_ddrive, speed_act_M1, &error_acc_M1, &error_prev_M1);
     update_pid("d", &PWM_M2, speed_req_ddrive, speed_act_M2, &error_acc_M2, &error_prev_M2);
@@ -366,3 +458,28 @@ void read_serial(){
   }
 }
 */
+
+/******* IMU FUNCTIONS *******/
+
+void calibrate_IMU(){
+   delay(100); // allow IMU to settle
+   
+   int total = 300;
+   long imu_total[6] = {0, 0, 0, 0, 0, 0};
+   int count = 0;
+   int i;
+   while(count <= total){
+      count++;
+      mimu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+      imu_total[0] += ax;
+      imu_total[1] += ay;
+      imu_total[2] += az;
+      imu_total[3] += gx;
+      imu_total[4] += gy;
+      imu_total[5] += gz;
+   }
+   for(i = 0; i < 6; i++){
+    imu_offset[i] = imu_total[i] / total;
+    Serial.println(imu_offset[i]);
+   }
+}

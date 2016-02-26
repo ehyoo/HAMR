@@ -1,3 +1,6 @@
+#ifndef Pid_h
+#define Pid_h
+
 typedef struct PID_Vars {
   float Kp;
   float Ki;
@@ -12,3 +15,7 @@ typedef struct PID_Vars {
     error_prev = 0.0;
   }
 };
+
+float update_pid(PID_Vars* pid_vars, int* command, float targetValue, float currentValue);
+
+#endif

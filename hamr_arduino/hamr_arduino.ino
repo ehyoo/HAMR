@@ -1,4 +1,5 @@
 #include "pid.h"
+#include "motor.h"
 
 /**********************************************
  * Pin Definitions
@@ -116,96 +117,12 @@ volatile long prev_count_M2 = 0; // M1 encoder revolution counter
 volatile long curr_count_M3 = 0; // M2 encoder revolution counter
 volatile long prev_count_M3 = 0; // M3 encoder revolution counter
 
-#define DIR_FORWARD 1
-#define DIR_BACKWARD 0
-void set_direction(int pin_driver_inA, int pin_driver_inB, bool dir) {
-  digitalWrite(pin_driver_inA, !dir);
-  digitalWrite(pin_driver_inB, dir);
-}
-
-void set_speed(int pwm_val, int pin_driver_inA, int pin_driver_inB, int pin_pwm) {
-  if (pwm_val < 0) {
-    // reverse direction
-    set_direction(pin_driver_inA, pin_driver_inB, DIR_BACKWARD);
-  } else {
-    // forward direction
-    set_direction(pin_driver_inA, pin_driver_inB, DIR_FORWARD);
-  }
-
-  analogWrite(pin_pwm, abs(pwm_val));
-}
-
-
-void measure_speed(float* speed_act, volatile long* curr_count, volatile long* prev_count) { // calculate speed
-  // Calculating the speed using encoder count
- // int count_diff = curr_count - prev_count;
- // float distance = ((float) count_diff / TICKS_PER_REV)
-  //*speed_act = (((float) (curr_count - prev_count) / TICKS_PER_REV) * DIST_PER_REV) / ((float) LOOPTIME / 1000.0);
-  *speed_act = (((float) (*curr_count - *prev_count) / 1632.0) * DIST_PER_REV) / (LOOPTIME / 1000.0);
-  //Serial.println(round(100* *speed_act));
-
-   // Reset counts
-  *prev_count = 0;
-  *curr_count = 0;
-}
-
-void measure_rot_speed(float* speed_act, volatile long* curr_count, volatile long* prev_count) { // calculate speed
-  *speed_act = 360.0 * ((*curr_count - *prev_count) / (float) TICKS_PER_REV_turret);
-<<<<<<< HEAD
-
-  // Reset counts
-  *prev_count = 0;
-  *curr_count = 0;
-=======
-  *prev_count = *curr_count; //setting count value to last count
-//  Serial.println(*speed_act);
->>>>>>> 2b49fd41e65087ea9954edbdc062bedece7de58e
-}
-
-
 
 /* PID LOOP VARIABLES */
 PID_Vars pid_vars_M1(100.0, 0.0, 0.0);
 PID_Vars pid_vars_M2(100.0, 0.0, 0.0);
 PID_Vars pid_vars_M3(0.0, 0.0, 0.0);
 
-float ddrive_Kp = 120.0;
-float ddrive_Ki = 150.0; 
-float ddrive_Kd = 1.5;
-
-float update_pid(PID_Vars* pid_vars, int* command, float targetValue, float currentValue) {
-
-  float Kp = pid_vars->Kp;
-  float Ki = pid_vars->Ki;
-  float Kd = pid_vars->Kd;
-
-  float error_acc_limit = 1.0;
-  
-  float pidTerm = 0.0;   
-  float error = 0.0;        
- 
-  error = targetValue - currentValue; 
-  pid_vars->error_acc += error * (LOOPTIME/1000.0);
-
-  pidTerm = (Kp * error) + (Kd * (error - pid_vars->error_prev) / (LOOPTIME/1000.0)) + (Ki * (pid_vars->error_acc));      
-
-  Serial.print("P: ");
-  Serial.print((Kp * error),3);
-  Serial.print(", D: ");
-  Serial.print((Kd * (error - pid_vars->error_prev) / (LOOPTIME/1000.0)),3);
-  Serial.print(", I: ");
-  Serial.print((Ki * (pid_vars->error_acc)),3);
-  Serial.print("\n");
-
-
-  // Anti integrator windup using clamping
-  pid_vars->error_acc = constrain((pid_vars->error_acc), -1*error_acc_limit, error_acc_limit);
-  
-  pid_vars->error_prev = error; // update error
-  
-  //*command = constrain(round(*command + pidTerm), -255, 255);
-  *command = constrain(round(pidTerm) * 2.55, -255, 255);
-}
 
 
 /*************

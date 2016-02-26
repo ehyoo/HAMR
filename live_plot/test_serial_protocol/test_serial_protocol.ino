@@ -9,6 +9,7 @@ void setup() {
   Serial.begin(250000);
   Serial.println("Arduino Ready"); //needs to be sent to detect that arduino has initialized
   i = 0;
+  Serial.setTimeout(0);
 }
 
 void loop() {
@@ -25,10 +26,10 @@ void loop() {
       }
    }
 
-   if(send_data){
+   if(send_data and Serial){
        Serial.println("st");
        Serial.println(millis() - start_time); // total time
-       Serial.println(.7);
+       Serial.println(sin_table[i]/1000.0,4);
        Serial.println(1.1);
        Serial.println(1);
        i = i == 199 ? 0: i + 1;

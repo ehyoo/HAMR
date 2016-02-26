@@ -71,7 +71,7 @@ void setup() {
   //digitalWrite(PIN_M1_ENCODER_OUTA, HIGH);                      
   //digitalWrite(PIN_M1_ENCODER_OUTB, HIGH);
   attachInterrupt(PIN_M1_ENCODER_OUTA, rencoderA_M1, CHANGE);  
-  attachInterrupt(PIN_M1_ENCODER_OUTB, rencoderB_M1, CHANGE);  
+  attachInterrupt(PIN_M1_ENCODER_OUTB, rencoderB_M1, CHANGE);
   attachInterrupt(PIN_M2_ENCODER_OUTA, rencoderA_M2, CHANGE);  
   attachInterrupt(PIN_M2_ENCODER_OUTB, rencoderB_M2, CHANGE);  
   attachInterrupt(PIN_M3_ENCODER_OUTA, rencoderA_M3, CHANGE);  
@@ -151,10 +151,15 @@ void measure_speed(float* speed_act, volatile long* curr_count, volatile long* p
 
 void measure_rot_speed(float* speed_act, volatile long* curr_count, volatile long* prev_count) { // calculate speed
   *speed_act = 360.0 * ((*curr_count - *prev_count) / (float) TICKS_PER_REV_turret);
+<<<<<<< HEAD
 
   // Reset counts
   *prev_count = 0;
   *curr_count = 0;
+=======
+  *prev_count = *curr_count; //setting count value to last count
+//  Serial.println(*speed_act);
+>>>>>>> 2b49fd41e65087ea9954edbdc062bedece7de58e
 }
 
 
@@ -226,7 +231,7 @@ void loop() {
     }
   }
 
-  if((millis()-lastMilli) >= LOOPTIME) { 
+  if((millis()-lastMilli) >= LOOPTIME) {
     lastMilli = millis();
 
     if(send_data){

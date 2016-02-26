@@ -23,8 +23,10 @@ port = 'COM6'
 baudrate = 250000
 
 serial_first_line = 'st\n'
+blit = False
 if platform.system() is 'Windows':
     serial_first_line = 'st\r\n'
+    blit = True
 
 
 # Open new file in the given directory. Create new directory if it does not exist
@@ -40,43 +42,7 @@ def open_file(name, dir):
     new_file = open(file_path, 'w')
     return new_file
 
-# start_time = time.time()
-
-# read_finished = False
-# plotting = True
-# time_ptr = 0
-
-# def read_loop():
-#     global read_finished
-#     global xdata
-#     global ydata
-#     global time_ptr
-#     print "read loop\n"
-
-#     while plotting: # time.time() - start_time < 4
-#         line = device.readline()   # read a '\n' terminated line
-#         print line
-#         if line == 'start\r\n': # read the beginning of transmission
-#             data = [0,0,0,0]
-#             for j in range(4): # read 5 data values and one time value in millis
-#                 data[j] = float(device.readline()) #convert to a 32 bit integer
-#             # print data
-#             # xdata[time_ptr] = data[3] 1000.0
-#             # print xdata[time_ptr]
-#             # ydata[time_ptr] = data[0]
-#             # log.write(str(data[3]) + ', ' + str(data[0]) + "\n")
-#             time_ptr = 0 if time_ptr == 999 else time_ptr + 1
-
-#     read_finished = True
-
-
-
-# t2 = threading.Thread(target=query_user) # to pass in parameters, need to subclass
-# t2.start()
-
-
 # read the serial port if it is open. should be run in a seperate thread
-
 def print_error(e, method):
     print  "CAUGHT: " + e.__class__.__name__ + "\n" + str(e) + "\n" + "METHOD: " + method
 
@@ -126,6 +92,11 @@ def read_loop():
     global reading
     global continue_reading
 
+    global xdata
+    global ydata0
+    global ydata1
+    global ydata2
+
     log = open_file('hamr', 'test_data')
 
     num_data_points = 4
@@ -147,15 +118,52 @@ def read_loop():
                     continue
             
             # do something with data
-            print data
-            # update graph data
+
+            # print len(xdata)
+            # print len(ydata0)
+            # print len(ydata1)
+            # print data
+
+            if len(xdata) < 1000:
+                xd = np.append(xdata, data[0] / 1000.0)
+                yd0 = np.append(ydata0, data[1])
+                yd1 = np.append(ydata1, data[2])
+                yd2 = np.append(ydata2, data[3])
+
+                xdata = xd
+                ydata0 = yd0
+                ydata1 = yd1
+                ydata2 = yd2
+
+            else:
+                xd = np.copy(xdata)
+                xd[0]  = data[0] / 1000.0
+                xd = np.roll(xd, -1)
+
+                yd0 = np.copy(ydata0)
+                yd0[0] = data[1]
+                yd0 = np.roll(yd0, -1)
+
+                yd1 = np.copy(ydata1)
+                yd1[0] = data[2]
+                yd1 = np.roll(yd1, -1)
+
+                yd2 = np.copy(ydata2)
+                yd2[0] = data[2]
+                yd2 = np.roll(yd2, -1)
+
+                xdata = xd
+                ydata0 = yd0
+                ydata1 = yd1
+                ydata2 = yd2
+
 
             log.write(','.join(map(str, data)) + "\n")
 
     log.close()
     reading = False
 
-
+#### update graph even if xvalue is below 10
 # connect to com port 
 def callback_connect(event):
     global continue_reading
@@ -163,6 +171,9 @@ def callback_connect(event):
     if button_connect.label.get_text() == 'Connect':
         # attempt to connect to the serial port unless it's already open
         if not serial_connect(device): return
+
+        thread_command.start()
+
         button_connect.label.set_text("Disconnect")
         print "Connected Succesfully"
     else:
@@ -209,22 +220,85 @@ def callback_log_data(event):
     
     plt.draw()
 
+def arduino_command_loop():
+    while device.is_open:
+        command = raw_input('enter something\n')
+        if device.open: device.write(command)
 
+# PLOTTING
 # GUI
+plt.subplots_adjust(bottom=0.2)
 button_connect = Button(plt.axes([0.1, 0.05, 0.15, 0.075]), 'Connect')
 button_connect.on_clicked(callback_connect) 
 
 button_log_data = Button(plt.axes([0.3, 0.05, 0.15, 0.075]), 'Log Data')
-button_log_data.on_clicked(callback_log_data) 
+button_log_data.on_clicked(callback_log_data)
+
+# initialize plots
+numplots = 3
+fig = plt.figure()
+axes = [plt.subplot(201 + 10 * np.ceil(numplots/2.0) + x) for x in range(0, numplots)]
+
+# data sets
+data_size = 1000 # the max number of points to plot at one time
+# xdata = np.linspace(0, 9.99, num = data_size)
+# ydata0 = np.empty(data_size)
+# ydata1 = np.empty(data_size)
+
+xdata = [0]
+ydata0 = [0]
+ydata1 = [0]
+ydata2 = [0]
+
+# set axis limits
+lines = [axis.plot(ydata0, '.')[0] for axis in axes]
+for axis in axes:
+    axis.set_ylim(-2.0,2.0)
+
+axes[2].set_ylim(0,360.0)
+
+xmin = 0 
+update_rate = 100
+
+# initial state for blitting
+def init():
+    for j in range(0,numplots):
+        lines[j].set_ydata([])
+        lines[j].set_xdata([])
+        axes[j].set_xlim(xmin, xmin + 10)
+    return tuple([line for line in lines])
+
+def update(data):
+    global xdata 
+    global ydata0
+    global ydata1
+
+    # these should be the only lines needed for live update
+    lines[0].set_xdata(xdata)
+    lines[1].set_xdata(xdata)
+    lines[0].set_ydata(ydata0)
+    lines[1].set_ydata(ydata1)
+
+    axes[0].set_xlim(0,10)
+    axes[1].set_xlim(0,10)
+    xmax = max(xdata)
+    axes[0].set_xlim(xmax-10, xmax) # plot last ten seconds
+    axes[1].set_xlim(xmax-10, xmax) # plot last ten seconds
+    return tuple([line for line in lines])
+
 
 def main():
     global device
     global reading  # while this is true, thread_read is still alive
     global continue_reading  # If this is true, then the thread_read thread will not exit
+    global thread_command
 
     reading = False 
     device = serial_initialize(port, baudrate, timeout_=2, write_timeout_=2)
 
+    thread_command = threading.Thread(target=arduino_command_loop)
+
+    ani = animation.FuncAnimation(fig, update, init_func = init, interval=update_rate, blit=blit)
     plt.show()
 
     continue_reading = False  # tell thread_read to exit

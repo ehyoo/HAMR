@@ -13,7 +13,7 @@ import matplotlib.animation as animation
 from matplotlib.widgets import Button
 from matplotlib.widgets import Slider
 from matplotlib.widgets import CheckButtons
-
+from matplotlib.widgets import MultiCursor
 
 
 import hamr_file_writer
@@ -267,22 +267,22 @@ def callback_slider_t_motor(val):
 
 
 def callback_slider_P(val):
-    if not update_arduino_immediately: return
     rounded_val = int(val/pid_round * pid_round) 
     if val != rounded_val:
         slider_P.set_val(rounded_val)
+    if not update_arduino_immediately: return
 
 def callback_slider_I(val):
-    if not update_arduino_immediately: return
     rounded_val = int(val/pid_round * pid_round) 
     if val != rounded_val:
         slider_I.set_val(rounded_val)
+    if not update_arduino_immediately: return
 
 def callback_slider_D(val):
-    if not update_arduino_immediately: return
     rounded_val = int(val/pid_round * pid_round) 
     if val != rounded_val:
         slider_D.set_val(rounded_val)
+    if not update_arduino_immediately: return
 
 
 # def callback
@@ -296,7 +296,7 @@ def callback_slider_D(val):
 
 # initialize plots
 numplots = 4
-fig = plt.figure(figsize=(20,8))
+fig = plt.figure(figsize=(20,8), facecolor='#E6EFF2')
 plt.subplots_adjust(left=.5, bottom=.2)
 
 # create numplots subplots
@@ -321,23 +321,27 @@ xmin = 0
 update_rate = 50
 pause_graph = False
 
+
+# multi = MultiCursor(fig.canvas, tuple([i for i in m_axes]), color='r', lw=1)
+
+
 # GUI
 
 # BUTTONS
 plt.subplots_adjust(left=.3, bottom=0.2)
-button_connect = Button(plt.axes([0.01, 0.05, 0.05, 0.075]), 'Connect')
+button_connect = Button(plt.axes([0.01, 0.05, 0.05, 0.075]), 'Connect', color='#FFFFFF')
 button_connect.on_clicked(callback_connect) 
 
-button_log_data = Button(plt.axes([0.12, 0.05, 0.08, 0.075]), 'Log Data')
+button_log_data = Button(plt.axes([0.12, 0.05, 0.08, 0.075]), 'Log Data', color='#FFFFFF')
 button_log_data.on_clicked(callback_log_data)
 
-button_pause_graph = Button(plt.axes([0.21, 0.05, 0.08, 0.075]), 'Pause Graph')
+button_pause_graph = Button(plt.axes([0.21, 0.05, 0.08, 0.075]), 'Pause Graph', color='#FFFFFF')
 button_pause_graph.on_clicked(callback_pause_graph)
 
-button_update_arduino = Button(plt.axes([0.34, 0.05, 0.1, 0.075]), 'Update Arduino')
+button_update_arduino = Button(plt.axes([0.34, 0.05, 0.1, 0.075]), 'Update Arduino', color='#FFFFFF')
 button_update_arduino.on_clicked(callback_update_arduino)
 
-button_reset_arduino = Button(plt.axes([0.45, 0.05, 0.1, 0.075]), 'Reset Arduino')
+button_reset_arduino = Button(plt.axes([0.45, 0.05, 0.1, 0.075]), 'Reset Arduino', color='#FFFFFF')
 button_reset_arduino.on_clicked(callback_reset_arduino)
 
 

@@ -1,5 +1,6 @@
 #include "pid.h"
 #include "motor.h"
+#include "localization.h"
 
 /**********************************************
  * Pin Definitions
@@ -9,10 +10,10 @@
  * M3 = Turret motor
  **********************************************/
 // DD motor encoders
-#define PIN_M2_ENCODER_OUTA 34
-#define PIN_M2_ENCODER_OUTB 32
 #define PIN_M1_ENCODER_OUTA 38
 #define PIN_M1_ENCODER_OUTB 40
+#define PIN_M2_ENCODER_OUTA 34
+#define PIN_M2_ENCODER_OUTB 32
 // Turret motor encoder
 #define PIN_M3_ENCODER_OUTA 30
 #define PIN_M3_ENCODER_OUTB 28
@@ -29,7 +30,16 @@
 #define PIN_M3_DRIVER_INB 43
 #define PIN_M3_DRIVER_PWM 2
 
-// PID control defines
+/*
+ * Robot Constants
+ */
+#define TICKS_PER_REV_DDRIVE  1632.0  // number of encoder ticks in one full rotation on diff drive motor
+#define TICKS_PER_REV_TURRET  3000.0  // turret motor (250:1 gear ratio * 12)
+#define WHEEL_DIAMETER        0.060325 // in meters (2 3/8" diameter)  
+#define WHEEL_RADIUS          (WHEEL_DIAMETER / 2.0)  // wheel radius, in meters
+#define WHEEL_DIST            0.0 // distance between diff drive wheels
+#define DIST_PER_REV          (PI*WHEEL_DIAMETER)  // circumference of wheel in meters
+#define LOOPTIME              50.0 // in ms      
 
 
 // For live-plotting
@@ -120,6 +130,8 @@ PID_Vars pid_vars_M2(100.0, 0.0, 0.0);
 PID_Vars pid_vars_M3(0.0, 0.0, 0.0);
 
 
+location hamr_loc;
+
 
 /*************
  * MAIN LOOP *
@@ -168,18 +180,26 @@ void loop() {
     Serial.print(curr_count_M2);
     Serial.print("\n");
 
-    if (millis() - startMilli >= 0) {
-      // calculate speed
-      measure_speed(&speed_act_M1, &curr_count_M1, &prev_count_M1);
-      measure_speed(&speed_act_M2, &curr_count_M2, &prev_count_M2);
-      measure_rot_speed(&speed_act_M3, &curr_count_M3, &prev_count_M3);         
+    if (millis() - startMilli >= 0) { // conditional used to delay start of control loop for testing
+      float t_elapsed = (float) (millis() - startMilli);
+
+      // Count encoder increments since last loop
+      long encoder_counts_M1 = curr_count_M1 - prev_count_M1;
+      long encoder_counts_M2 = curr_count_M2 - prev_count_M2;
+      long encoder_counts_M3 = curr_count_M3 - prev_count_M3;
+
+      hamr_loc.update(encoder_counts_M1, encoder_counts_M1, TICKS_PER_REV_DDRIVE, WHEEL_RADIUS, WHEEL_DIST);
+      
+      // compute speed
+      speed_act_M1 = get_speed(encoder_counts_M1, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
+      speed_act_M2 = get_speed(encoder_counts_M2, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
+      speed_act_M3 = get_ang_speed(encoder_counts_M3, TICKS_PER_REV_TURRET, t_elapsed);         
       
       // compute PWM value
-      
-      update_pid(&pid_vars_M1, &PWM_M1, speed_req_ddrive, speed_act_M1);
-      update_pid(&pid_vars_M2, &PWM_M2, speed_req_ddrive, speed_act_M2);
-      update_pid(&pid_vars_M3, &PWM_M3, speed_req_turret, speed_act_M3);
-  
+      update_pid(&pid_vars_M1, &PWM_M1, speed_req_ddrive, speed_act_M1, t_elapsed);
+      update_pid(&pid_vars_M2, &PWM_M2, speed_req_ddrive, speed_act_M2, t_elapsed);
+      update_pid(&pid_vars_M3, &PWM_M3, speed_req_turret, speed_act_M3, t_elapsed);
+
       set_speed(PWM_M1, PIN_M1_DRIVER_INA, PIN_M1_DRIVER_INB, PIN_M1_DRIVER_PWM);
       set_speed(PWM_M2, PIN_M2_DRIVER_INA, PIN_M2_DRIVER_INB, PIN_M2_DRIVER_PWM);
       set_speed(PWM_M3, PIN_M3_DRIVER_INA, PIN_M3_DRIVER_INB, PIN_M3_DRIVER_PWM);
@@ -191,7 +211,6 @@ void loop() {
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 /* 
  *  ENCODER COUNTING INTERRUPT ROUTINES
  *  Motor index: 1 (left DD), 2 (right DD), 3 (turret)

@@ -1,8 +1,7 @@
 #include "pid.h"
 #include "Arduino.h"
-#include "motor.h"
 
-float update_pid(PID_Vars* pid_vars, int* command, float targetValue, float currentValue) {
+float update_pid(PID_Vars* pid_vars, int* command, float targetValue, float currentValue, float time_elapsed) {
 
   float Kp = pid_vars->Kp;
   float Ki = pid_vars->Ki;
@@ -14,14 +13,14 @@ float update_pid(PID_Vars* pid_vars, int* command, float targetValue, float curr
   float error = 0.0;        
  
   error = targetValue - currentValue; 
-  pid_vars->error_acc += error * (LOOPTIME/1000.0);
+  pid_vars->error_acc += error * (time_elapsed/1000.0);
 
-  pidTerm = (Kp * error) + (Kd * (error - pid_vars->error_prev) / (LOOPTIME/1000.0)) + (Ki * (pid_vars->error_acc));      
+  pidTerm = (Kp * error) + (Kd * (error - pid_vars->error_prev) / (time_elapsed/1000.0)) + (Ki * (pid_vars->error_acc));      
 
   Serial.print("P: ");
   Serial.print((Kp * error),3);
   Serial.print(", D: ");
-  Serial.print((Kd * (error - pid_vars->error_prev) / (LOOPTIME/1000.0)),3);
+  Serial.print((Kd * (error - pid_vars->error_prev) / (time_elapsed/1000.0)),3);
   Serial.print(", I: ");
   Serial.print((Ki * (pid_vars->error_acc)),3);
   Serial.print("\n");

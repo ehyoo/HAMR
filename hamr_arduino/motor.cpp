@@ -1,15 +1,12 @@
 #include "motor.h"
 #include "Arduino.h"
 
-
-
-
-
 void set_direction(int pin_driver_inA, int pin_driver_inB, bool dir) {
   digitalWrite(pin_driver_inA, !dir);
   digitalWrite(pin_driver_inB, dir);
 }
 
+// Sets direction and Arduino PWM from controls-derived PWM value
 void set_speed(int pwm_val, int pin_driver_inA, int pin_driver_inB, int pin_pwm) {
   if (pwm_val < 0) {
     // reverse direction
@@ -22,23 +19,36 @@ void set_speed(int pwm_val, int pin_driver_inA, int pin_driver_inB, int pin_pwm)
   analogWrite(pin_pwm, abs(pwm_val));
 }
 
-void measure_speed(float* speed_act, volatile long* curr_count, volatile long* prev_count) { // calculate speed
-  // Calculating the speed using encoder count
- // int count_diff = curr_count - prev_count;
- // float distance = ((float) count_diff / TICKS_PER_REV)
-  //*speed_act = (((float) (curr_count - prev_count) / TICKS_PER_REV) * DIST_PER_REV) / ((float) LOOPTIME / 1000.0);
-  *speed_act = (((float) (*curr_count - *prev_count) / 1632.0) * DIST_PER_REV) / (LOOPTIME / 1000.0);
-  //Serial.println(round(100* *speed_act));
-
-   // Reset counts
-  *prev_count = 0;
-  *curr_count = 0;
+void reset_encoder_counts(volatile long* count1, volatile long* count2) {
+  *count1 = 0;
+  *count2 = 0;
 }
 
-void measure_rot_speed(float* speed_act, volatile long* curr_count, volatile long* prev_count) { // calculate speed
-  *speed_act = 360.0 * ((*curr_count - *prev_count) / (float) TICKS_PER_REV_turret);
-  
-  // Reset counts
-  *prev_count = 0;
-  *curr_count = 0;
+/*
+ * Calculates speed from encoder counts over time
+ * 
+ * curr_count, prev_count: current and previous encoder counts
+ * ticks_per_rev: number of encoder counts per revolution
+ * dist_per_rev: circumference of wheel
+ * time_elapsed: time in ms
+ */
+float get_speed(long encoder_counts,
+                float ticks_per_rev, 
+                float dist_per_rev, 
+                float time_elapsed) {
+  // Calculating the speed using encoder count
+  return ((((float) encoder_counts) / ticks_per_rev) * dist_per_rev) / (time_elapsed / 1000.0);
+}
+
+/*
+ * Calculates angular speed from encoder counts over time
+ * 
+ * encoder_counts: encoder counts over the time period time_elapsed
+ * ticks_per_rev: number of encoder counts per revolution
+ * time_elapsed: time in ms
+ */
+float get_ang_speed(long encoder_counts,
+                    float ticks_per_rev,
+                    float time_elapsed) {
+  return 360.0 * (((float) encoder_counts) / ticks_per_rev) / (time_elapsed / 1000.0);
 }

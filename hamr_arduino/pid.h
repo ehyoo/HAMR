@@ -16,6 +16,6 @@ typedef struct PID_Vars {
   }
 };
 
-float update_pid(PID_Vars* pid_vars, int* command, float targetValue, float currentValue);
+float update_pid(PID_Vars* pid_vars, int* command, float targetValue, float currentValue, float time_elapsed);
 
 #endif

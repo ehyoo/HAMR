@@ -19,11 +19,6 @@ void set_speed(int pwm_val, int pin_driver_inA, int pin_driver_inB, int pin_pwm)
   analogWrite(pin_pwm, abs(pwm_val));
 }
 
-void reset_encoder_counts(volatile long* count1, volatile long* count2) {
-  *count1 = 0;
-  *count2 = 0;
-}
-
 /*
  * Calculates speed from encoder counts over time
  * 
@@ -37,6 +32,11 @@ float get_speed(long encoder_counts,
                 float dist_per_rev, 
                 float time_elapsed) {
   // Calculating the speed using encoder count
+  /*Serial.print(encoder_counts);
+  Serial.print(time_elapsed,2);
+  Serial.print(ticks_per_rev,2);
+  Serial.print(dist_per_rev,2);*/
+
   return ((((float) encoder_counts) / ticks_per_rev) * dist_per_rev) / (time_elapsed / 1000.0);
 }
 

@@ -1,6 +1,6 @@
 #include "pid.h"
 #include "motor.h"
-#include "localization.h"
+#include "localize.h"
 
 /**********************************************
  * Pin Definitions
@@ -12,8 +12,8 @@
 // DD motor encoders
 #define PIN_M1_ENCODER_OUTA 38
 #define PIN_M1_ENCODER_OUTB 40
-#define PIN_M2_ENCODER_OUTA 34
-#define PIN_M2_ENCODER_OUTB 32
+#define PIN_M2_ENCODER_OUTA 32
+#define PIN_M2_ENCODER_OUTB 34
 // Turret motor encoder
 #define PIN_M3_ENCODER_OUTA 30
 #define PIN_M3_ENCODER_OUTB 28
@@ -46,6 +46,7 @@
 unsigned long startMilli = 0;
 int send_data = 0;
 
+// Encoder counting interrupt functions
 void rencoderA_M1();
 void rencoderB_M1();
 void rencoderA_M2();
@@ -91,12 +92,10 @@ void setup() {
   digitalWrite(PIN_M1_DRIVER_INB, HIGH);
   digitalWrite(PIN_M2_DRIVER_INA, LOW);
   digitalWrite(PIN_M2_DRIVER_INB, HIGH);
-  
   digitalWrite(PIN_M3_DRIVER_INA, HIGH);
   digitalWrite(PIN_M3_DRIVER_INB, LOW);
 
-
-  analogWrite(PIN_M1_DRIVER_PWM, 0);
+  analogWrite(PIN_M1_DRIVER_PWM, 100);
   analogWrite(PIN_M2_DRIVER_PWM, 0);
   analogWrite(PIN_M3_DRIVER_PWM, 0);
 
@@ -108,7 +107,7 @@ void setup() {
 unsigned long lastMilli = 0;                   
 unsigned long lastMilliPrint = 0;              
 float speed_req_ddrive = 0.5; // desired velocity for Diff Drive (m/s)
-float speed_req_turret = 0.0; // desired rotational velocity for Turret (deg/s)
+float speed_req_turret = 90.0; // desired rotational velocity for Turret (deg/s)
 float speed_act_M1 = 0.0;  //actual value (m/s)
 float speed_act_M2 = 0.0;  //actual value (m/s)
 float speed_act_M3 = 0.0;  //actual value (deg/s)
@@ -127,7 +126,7 @@ volatile long prev_count_M3 = 0; // M3 encoder revolution counter
 /* PID LOOP VARIABLES */
 PID_Vars pid_vars_M1(100.0, 0.0, 0.0);
 PID_Vars pid_vars_M2(100.0, 0.0, 0.0);
-PID_Vars pid_vars_M3(0.0, 0.0, 0.0);
+PID_Vars pid_vars_M3(100.0, 0.0, 0.0);
 
 
 location hamr_loc;
@@ -137,9 +136,8 @@ location hamr_loc;
  * MAIN LOOP *
  *************/
 void loop() {
-  set_speed(-255, PIN_M1_DRIVER_INA, PIN_M1_DRIVER_INB, PIN_M1_DRIVER_PWM);
-  set_speed(-255, PIN_M2_DRIVER_INA, PIN_M2_DRIVER_INB, PIN_M2_DRIVER_PWM);
-
+  //set_speed(255, PIN_M1_DRIVER_INA, PIN_M1_DRIVER_INB, PIN_M1_DRIVER_PWM);
+  //set_speed(255, PIN_M2_DRIVER_INA, PIN_M2_DRIVER_INB, PIN_M2_DRIVER_PWM);
   while(1){};
 
   
@@ -157,7 +155,6 @@ void loop() {
   }
 
   if((millis()-lastMilli) >= LOOPTIME) {
-    lastMilli = millis();
 
     if(send_data){
       Serial.println("st");
@@ -167,28 +164,20 @@ void loop() {
       Serial.println(speed_act_M3, 4);
     }
     
-    Serial.print(speed_act_M1, 4);
-    Serial.print(" (");
-    Serial.print(PWM_M1);
-    Serial.print("), ");
-    Serial.print(speed_act_M2, 4);
-    Serial.print(" (");
-    Serial.print(PWM_M2);
-    Serial.print(")\n");
-    Serial.print(curr_count_M1);
-    Serial.print(" ");
-    Serial.print(curr_count_M2);
-    Serial.print("\n");
 
     if (millis() - startMilli >= 0) { // conditional used to delay start of control loop for testing
-      float t_elapsed = (float) (millis() - startMilli);
+      float t_elapsed = (float) (millis() - lastMilli);
+      lastMilli = millis();
 
       // Count encoder increments since last loop
       long encoder_counts_M1 = curr_count_M1 - prev_count_M1;
       long encoder_counts_M2 = curr_count_M2 - prev_count_M2;
       long encoder_counts_M3 = curr_count_M3 - prev_count_M3;
-
-      hamr_loc.update(encoder_counts_M1, encoder_counts_M1, TICKS_PER_REV_DDRIVE, WHEEL_RADIUS, WHEEL_DIST);
+      prev_count_M1 = curr_count_M1;
+      prev_count_M2 = curr_count_M2;
+      prev_count_M3 = curr_count_M3;
+      
+      hamr_loc.update(encoder_counts_M1, encoder_counts_M2, TICKS_PER_REV_DDRIVE, WHEEL_RADIUS, WHEEL_DIST);
       
       // compute speed
       speed_act_M1 = get_speed(encoder_counts_M1, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
@@ -203,8 +192,23 @@ void loop() {
       set_speed(PWM_M1, PIN_M1_DRIVER_INA, PIN_M1_DRIVER_INB, PIN_M1_DRIVER_PWM);
       set_speed(PWM_M2, PIN_M2_DRIVER_INA, PIN_M2_DRIVER_INB, PIN_M2_DRIVER_PWM);
       set_speed(PWM_M3, PIN_M3_DRIVER_INA, PIN_M3_DRIVER_INB, PIN_M3_DRIVER_PWM);
+
+
+      Serial.print(speed_act_M1, 4);
+      Serial.print(" (");
+      Serial.print(PWM_M1);
+      Serial.print("), ");
+      Serial.print(speed_act_M2, 4);
+      Serial.print(" (");
+      Serial.print(PWM_M2);
+      Serial.print(")\n");
+      Serial.print(curr_count_M1);
+      Serial.print(" ");
+      Serial.print(curr_count_M2);
+      Serial.print("\n");
+
     }
-    
+
     //read_serial();
   }
 

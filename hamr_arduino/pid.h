@@ -7,7 +7,7 @@ typedef struct PID_Vars {
   float Kd;
   float error_acc;
   float error_prev; 
-  PID_Vars(int Kp_in, int Ki_in, int Kd_in) {
+  PID_Vars(float Kp_in, float Ki_in, float Kd_in) {
     Kp = Kp_in;
     Ki = Ki_in;
     Kd = Kd_in;

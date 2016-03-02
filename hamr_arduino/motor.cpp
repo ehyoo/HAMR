@@ -1,3 +1,4 @@
+
 #include "motor.h"
 #include "Arduino.h"
 
@@ -17,6 +18,15 @@ void set_speed(int pwm_val, int pin_driver_inA, int pin_driver_inB, int pin_pwm)
   }
 
   analogWrite(pin_pwm, abs(pwm_val));
+}
+
+void init_servo(Servo* motor, int pwm_pin) {
+  motor->attach(pwm_pin);
+}
+
+void set_servo_speed(Servo* motor, float ang_speed) {
+  int pwm_val = round(map(ang_speed, 0.0, 0.0, 0, 180));
+  motor->write(pwm_val);
 }
 
 /*

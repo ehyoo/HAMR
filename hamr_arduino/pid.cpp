@@ -23,8 +23,8 @@ float update_pid(PID_Vars* pid_vars, int* command, float targetValue, float curr
   Serial.print((Kd * (error - pid_vars->error_prev) / (time_elapsed/1000.0)),3);
   Serial.print(", I: ");
   Serial.print((Ki * (pid_vars->error_acc)),3);
-  Serial.print("\n");*/
-
+  Serial.print("\n");
+*/
 
   // Anti integrator windup using clamping
   pid_vars->error_acc = constrain((pid_vars->error_acc), -1*error_acc_limit, error_acc_limit);
@@ -32,5 +32,5 @@ float update_pid(PID_Vars* pid_vars, int* command, float targetValue, float curr
   pid_vars->error_prev = error; // update error
   
   //*command = constrain(round(*command + pidTerm), -255, 255);
-  *command = constrain(round(pidTerm) * 2.55, -255, 255);
+  *command = constrain(pidTerm * 255.0, -255, 255);
 }

@@ -1,8 +1,12 @@
 #ifndef Motor_h
 #define Motor_h
 
+#include <Servo.h>
+
 #define DIR_FORWARD 1
 #define DIR_BACKWARD 0
+
+void init_servo(Servo* motor, int pwm_pin);
 
 void set_direction(int pin_driver_inA, int pin_driver_inB, bool dir);
 
@@ -16,4 +20,6 @@ float get_speed(long encoder_counts,
 float get_ang_speed(long encoder_counts,
                     float ticks_per_rev,
                     float time_elapsed);
+
+                    
 #endif

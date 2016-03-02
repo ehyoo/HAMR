@@ -39,12 +39,60 @@
 #define WHEEL_RADIUS          (WHEEL_DIAMETER / 2.0)  // wheel radius, in meters
 #define WHEEL_DIST            0.0 // distance between diff drive wheels
 #define DIST_PER_REV          (PI*WHEEL_DIAMETER)  // circumference of wheel in meters
-#define LOOPTIME              50.0 // in ms      
+#define LOOPTIME              20.0 // in ms      
 
 
 // For live-plotting
-unsigned long startMilli = 0;
+/* SIGNALS */
+const char SIG_START_STRING = '$';
+const char SIG_START_LOG = '[';
+const char SIG_STOP_LOG = ']';
+const char SIG_UNINITIALIZED = '!';
+
+const char SIG_R_MOTOR = 'r';
+const char SIG_L_MOTOR = 'l';
+const char SIG_T_MOTOR = 't';
+
+const char SIG_R_KP = '1';
+const char SIG_R_KI = '2';
+const char SIG_R_KD = '3';
+
+const char SIG_L_KP = '4';
+const char SIG_L_KI = '5';
+const char SIG_L_KD = '6';
+
+const char SIG_T_KP = '7';
+const char SIG_T_KI = '8';
+const char SIG_T_KD = '9';
+
+
+/* ignore this - for testing*/
+int sin_table[200] = {500,516,531,547,563,578,594,609,624,639,655,669,684,699,713,727,741,755,768,781,794,806,819,831,842,854,864,875,885,895,905,914,922,930,938,946,952,959,965,970,976,980,984,988,991,994,996,998,999,1000,1000,1000,999,998,996,994,991,988,984,980,976,970,965,959,952,946,938,930,922,914,905,895,885,875,864,854,842,831,819,806,794,781,768,755,741,727,713,699,684,669,655,639,624,609,594,578,563,547,531,516,500,484,469,453,437,422,406,391,376,361,345,331,316,301,287,273,259,245,232,219,206,194,181,169,158,146,136,125,115,105,95,86,78,70,62,54,48,41,35,30,24,20,16,12,9,6,4,2,1,0,0,0,1,2,4,6,9,12,16,20,24,30,35,41,48,54,62,70,78,86,95,105,115,125,136,146,158,169,181,194,206,219,232,245,259,273,287,301,316,331,345,361,376,391,406,422,437,453,469,484};
+int i;
+
+/* This holds the buffer we write to at the beginning of every incoming communication*/
+char buffer[1];
+
+/* This is used to indicate that Arduino is in send_data mode*/
 int send_data = 0;
+
+/* These should be whatever variables you want to change*/
+float right_motor = 0;
+float left_motor = 0;
+float turret_motor = 0;
+float r_Kp = 0;
+float r_Ki = 0;
+float r_Kd = 0;
+
+float l_Kp = 0;
+float l_Ki = 0;
+float l_Kd = 0;
+
+float t_Kp = 0;
+float t_Ki = 0;
+float t_Kd = 0;
+
+float startMilli;
 
 // Encoder counting interrupt functions
 void rencoderA_M1();
@@ -54,9 +102,14 @@ void rencoderB_M2();
 void rencoderA_M3();
 void rencoderB_M3();
 
+Servo M3;
+
 
 void setup() {
-  Serial.begin(250000);       //establishimg serial communication at 9600 baud
+  init_serial();
+
+  // Set up turret motor
+  init_servo(&M3, PIN_M3_DRIVER_PWM);
 
   // Set DD motor driver pins as outputs
   pinMode(PIN_DD_EN, OUTPUT);
@@ -95,19 +148,18 @@ void setup() {
   digitalWrite(PIN_M3_DRIVER_INA, HIGH);
   digitalWrite(PIN_M3_DRIVER_INB, LOW);
 
-  analogWrite(PIN_M1_DRIVER_PWM, 100);
+  analogWrite(PIN_M1_DRIVER_PWM, 0);
   analogWrite(PIN_M2_DRIVER_PWM, 0);
   analogWrite(PIN_M3_DRIVER_PWM, 0);
 
-  Serial.println("Arduino Ready"); //needs to be sent to detect that arduino has initialized
   startMilli = millis();
 }
 
 
 unsigned long lastMilli = 0;                   
 unsigned long lastMilliPrint = 0;              
-float speed_req_ddrive = 0.5; // desired velocity for Diff Drive (m/s)
-float speed_req_turret = 90.0; // desired rotational velocity for Turret (deg/s)
+float speed_req_ddrive = 0.0; // desired velocity for Diff Drive (m/s)
+float speed_req_turret = 0.0; // desired rotational velocity for Turret (deg/s)
 float speed_act_M1 = 0.0;  //actual value (m/s)
 float speed_act_M2 = 0.0;  //actual value (m/s)
 float speed_act_M3 = 0.0;  //actual value (deg/s)
@@ -124,9 +176,9 @@ volatile long prev_count_M3 = 0; // M3 encoder revolution counter
 
 
 /* PID LOOP VARIABLES */
-PID_Vars pid_vars_M1(100.0, 0.0, 0.0);
-PID_Vars pid_vars_M2(100.0, 0.0, 0.0);
-PID_Vars pid_vars_M3(100.0, 0.0, 0.0);
+PID_Vars pid_vars_M1(0.0, 0.0, 0.0);
+PID_Vars pid_vars_M2(0.0, 0.0, 0.0);
+PID_Vars pid_vars_M3(0.0, 0.0, 0.0);
 
 
 location hamr_loc;
@@ -138,31 +190,11 @@ location hamr_loc;
 void loop() {
   //set_speed(255, PIN_M1_DRIVER_INA, PIN_M1_DRIVER_INB, PIN_M1_DRIVER_PWM);
   //set_speed(255, PIN_M2_DRIVER_INA, PIN_M2_DRIVER_INB, PIN_M2_DRIVER_PWM);
-  while(1){};
-
-  
-  if(Serial.available()){
-    String str = Serial.readString();
-    Serial.print(str);
-    
-    if(str == "send\n"){
-      send_data = 1;
-      delay(200);
-    } 
-    else if (str == "stop\n"){
-      send_data = 0;
-    }
-  }
+  //while(1){};
 
   if((millis()-lastMilli) >= LOOPTIME) {
-
-    if(send_data){
-      Serial.println("st");
-      Serial.println(millis() - startMilli);
-      Serial.println(speed_act_M1, 4);
-      Serial.println(speed_act_M2, 4);
-      Serial.println(speed_act_M3, 4);
-    }
+    read_serial();
+    send_serial();
     
 
     if (millis() - startMilli >= 0) { // conditional used to delay start of control loop for testing
@@ -178,7 +210,7 @@ void loop() {
       prev_count_M3 = curr_count_M3;
       
       hamr_loc.update(encoder_counts_M1, encoder_counts_M2, TICKS_PER_REV_DDRIVE, WHEEL_RADIUS, WHEEL_DIST);
-      
+
       // compute speed
       speed_act_M1 = get_speed(encoder_counts_M1, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
       speed_act_M2 = get_speed(encoder_counts_M2, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
@@ -193,7 +225,12 @@ void loop() {
       set_speed(PWM_M2, PIN_M2_DRIVER_INA, PIN_M2_DRIVER_INB, PIN_M2_DRIVER_PWM);
       set_speed(PWM_M3, PIN_M3_DRIVER_INA, PIN_M3_DRIVER_INB, PIN_M3_DRIVER_PWM);
 
-
+      /*
+      PWM_M1 = (int) right_motor;
+      PWM_M2 = (int) left_motor;
+      PWM_M3 = (int) turret_motor;
+      */
+/*
       Serial.print(speed_act_M1, 4);
       Serial.print(" (");
       Serial.print(PWM_M1);
@@ -206,7 +243,7 @@ void loop() {
       Serial.print(" ");
       Serial.print(curr_count_M2);
       Serial.print("\n");
-
+*/
     }
 
     //read_serial();
@@ -291,30 +328,103 @@ void rencoderB_M3()  {
 }
 
 
-// Read serial from USB and adjust variables
-/*
-float* current_serial_var;
+void init_serial(){
+  Serial.begin(250000);
+  Serial.println("Arduino Ready\n"); //needs to be sent to detect that arduino has initialized
+  i = 0;
+  Serial.setTimeout(0);
+}
+
+/* read a byte from serial. Perform appropriate action based on byte*/
 void read_serial(){
+  String str;
+  float temp;
+  float* sig_var;
+
+  buffer[0] = SIG_UNINITIALIZED; 
   if(Serial.available()){
-    String str = Serial.readString();
-    
-    if(str == "p"){
-        current_serial_var = &Kp;
-    } 
-    else if(str == "i"){
-        current_serial_var = &Ki;
+    Serial.readBytes(buffer, 1);
+    Serial.print(buffer[0]);
+
+    switch(buffer[0]){
+      case SIG_START_LOG:
+        send_data = 1;
+        break;
+
+      case SIG_STOP_LOG:
+        send_data = 0;
+        break;
+
+      // motor velocities
+      case SIG_R_MOTOR:
+        sig_var = &speed_req_ddrive;
+        break;
+
+      case SIG_L_MOTOR:
+        sig_var = &left_motor;
+        break;
+
+      case SIG_T_MOTOR:
+        sig_var = &turret_motor;
+        break;
+
+      // right motor PID
+      case SIG_R_KP:
+        sig_var = &(pid_vars_M1.Kp);
+        break;
+
+      case SIG_R_KI:
+        sig_var = &(pid_vars_M1.Ki);
+        break;
+
+      case SIG_R_KD:
+        sig_var = &(pid_vars_M1.Kd);
+        break;
+
+      // left motor PID
+      case SIG_L_KP:
+        sig_var = &(pid_vars_M2.Kp);
+        break;
+
+      case SIG_L_KI:
+        sig_var = &(pid_vars_M2.Ki);
+        break;
+
+      case SIG_L_KD:
+        sig_var = &(pid_vars_M2.Kd);
+        break;
+
+      // turrent motor PID
+      case SIG_T_KP:
+        sig_var = &(pid_vars_M3.Kp);
+        break;
+
+      case SIG_T_KI:
+        sig_var = &(pid_vars_M3.Ki);
+        break;
+
+      case SIG_T_KD:
+        sig_var = &(pid_vars_M3.Kd);
+        break;
     }
-    else if(str == "d"){
-        current_serial_var = &Kd;
-    } 
-    else if(str == "s"){
-        current_serial_var = &speed_req_ddrive;
-    }
-    else {
-        *current_serial_var = str.toFloat();
-        //Serial.print("Variable was changed to:");
-        //Serial.println(*current_serial_var);
+
+    if(Serial.available()){
+      *sig_var = Serial.readString().toFloat();
+      Serial.print(" "); Serial.print(*sig_var);
     }
   }
 }
-*/
+
+/* send relevant data through serial */
+void send_serial(){
+     if(send_data and Serial){
+       Serial.println(SIG_START_STRING);
+       delayMicroseconds(500);
+       Serial.println(millis() - startMilli); // total time
+       Serial.println(speed_act_M1, 4);
+       Serial.println(speed_act_M2, 4);
+       Serial.println(speed_req_ddrive);
+       Serial.println(0);
+       i = i == 199 ? 0: i + 1;
+   }
+}

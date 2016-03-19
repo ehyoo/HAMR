@@ -1,6 +1,8 @@
 #include "pid.h"
 #include "motor.h"
 #include "localize.h"
+#include "hamr_imu.h"
+
 
 /**********************************************
  * Pin Definitions
@@ -104,6 +106,10 @@ void rencoderB_M3();
 
 Servo M3;
 
+/* IMU settings */
+const float SENSOR_LOOPTIME = .005;
+long next_sensor_time = millis();
+float hamr_angle = 0;
 
 void setup() {
   init_serial();
@@ -246,6 +252,12 @@ void loop() {
 */
     }
 
+    if(next_sensor_time < millis()){
+      compute_imu(SENSOR_LOOPTIME);
+      hamr_angle = get_current_angle();
+    }
+    next_sensor_time = millis() + SENSOR_LOOPTIME * 1000;
+    
     //read_serial();
   }
 

@@ -1,7 +1,42 @@
 #include "pid.h"
 #include "Arduino.h"
 
-float update_pid(PID_Vars* pid_vars, int* command, float targetValue, float currentValue, float time_elapsed) {
+//float update_pid(float targetValue, float currentValue, float time_elapsed) {
+//  //  float Kp = pid_vars->Kp;
+//  //  float Ki = pid_vars->Ki;
+//  //  float Kd = pid_vars->Kd;
+//  
+//    float error_acc_limit = 1.0;
+//    
+//    float pidTerm = 0.0;   
+//  //  float error = 0.0;        
+//   
+//    float error = targetValue - currentValue; 
+//    error_acc += error * (time_elapsed/1000.0);
+//  
+//    pidTerm = (Kp * error) + (Kd * (error - error_prev) / (time_elapsed/1000.0)) + (Ki * (error_acc));      
+//  /*
+//    Serial.print("P: ");
+//    Serial.print((Kp * error),3);
+//    Serial.print(", D: ");
+//    Serial.print((Kd * (error - pid_vars->error_prev) / (time_elapsed/1000.0)),3);
+//    Serial.print(", I: ");
+//    Serial.print((Ki * (pid_vars->error_acc)),3);
+//    Serial.print("\n");
+//  */
+//  
+//    // Anti integrator windup using clamping
+//    error_acc = constrain((error_acc), -1*error_acc_limit, error_acc_limit);
+//   
+//    error_prev = error; // update error
+//    
+//    return pidTerm;
+//}
+
+
+/*
+void update_pid(PID_Vars* pid_vars, int* command, float targetValue, float currentValue, float time_elapsed) {
+
 
   float Kp = pid_vars->Kp;
   float Ki = pid_vars->Ki;
@@ -16,21 +51,12 @@ float update_pid(PID_Vars* pid_vars, int* command, float targetValue, float curr
   pid_vars->error_acc += error * (time_elapsed/1000.0);
 
   pidTerm = (Kp * error) + (Kd * (error - pid_vars->error_prev) / (time_elapsed/1000.0)) + (Ki * (pid_vars->error_acc));      
-/*
-  Serial.print("P: ");
-  Serial.print((Kp * error),3);
-  Serial.print(", D: ");
-  Serial.print((Kd * (error - pid_vars->error_prev) / (time_elapsed/1000.0)),3);
-  Serial.print(", I: ");
-  Serial.print((Ki * (pid_vars->error_acc)),3);
-  Serial.print("\n");
-*/
 
   // Anti integrator windup using clamping
   pid_vars->error_acc = constrain((pid_vars->error_acc), -1*error_acc_limit, error_acc_limit);
-  
+ 
   pid_vars->error_prev = error; // update error
   
-  //*command = constrain(round(*command + pidTerm), -255, 255);
-  *command = constrain(pidTerm * 255.0, -255, 255);
+  *command = pidTerm;
 }
+*/

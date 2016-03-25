@@ -2,7 +2,7 @@
 #include "motor.h"
 #include "localize.h"
 #include "hamr_imu.h"
-
+#include "dd_control.h"
 
 /**********************************************
  * Pin Definitions
@@ -39,7 +39,7 @@
 #define TICKS_PER_REV_TURRET  3000.0  // turret motor (250:1 gear ratio * 12)
 #define WHEEL_DIAMETER        0.060325 // in meters (2 3/8" diameter)  
 #define WHEEL_RADIUS          (WHEEL_DIAMETER / 2.0)  // wheel radius, in meters
-#define WHEEL_DIST            0.0 // distance between diff drive wheels
+#define WHEEL_DIST            0.19812 // distance between diff drive wheels, in meters (7.8")
 #define DIST_PER_REV          (PI*WHEEL_DIAMETER)  // circumference of wheel in meters
 #define LOOPTIME              20.0 // in ms      
 
@@ -154,24 +154,36 @@ void setup() {
   digitalWrite(PIN_M3_DRIVER_INA, HIGH);
   digitalWrite(PIN_M3_DRIVER_INB, LOW);
 
+  // Initialize PWMs to 0
   analogWrite(PIN_M1_DRIVER_PWM, 0);
   analogWrite(PIN_M2_DRIVER_PWM, 0);
-  analogWrite(PIN_M3_DRIVER_PWM, 0);
+  set_servo_speed(&M3, 0, 0.0, 0.0, 1.0);
+
+  //initialize_imu();
 
   startMilli = millis();
 }
 
 
 unsigned long lastMilli = 0;                   
-unsigned long lastMilliPrint = 0;              
-float speed_req_ddrive = 0.0; // desired velocity for Diff Drive (m/s)
+unsigned long lastMilliPrint = 0; 
+             
+float speed_req_ddrive = 0.0; // desired forward velocity for Diff Drive (m/s)
+float dtheta_req = 0.0;       // desired rotational velocity for Diff Drive (deg/s)
 float speed_req_turret = 0.0; // desired rotational velocity for Turret (deg/s)
+
+float speed_req_M1 = -0.2;
+float speed_req_M2 = 0.2;
+
 float speed_act_M1 = 0.0;  //actual value (m/s)
 float speed_act_M2 = 0.0;  //actual value (m/s)
 float speed_act_M3 = 0.0;  //actual value (deg/s)
+
 int PWM_M1 = 0; // PWM value for M1
 int PWM_M2 = 0; // PWM value for M2
 int PWM_M3 = 0; // PWM value for M3        
+
+float dtheta_cmd = 0.0;
 
 volatile long curr_count_M1 = 0; // M1 encoder revolution counter
 volatile long prev_count_M1 = 0; // M2 encoder revolution counter
@@ -182,9 +194,9 @@ volatile long prev_count_M3 = 0; // M3 encoder revolution counter
 
 
 /* PID LOOP VARIABLES */
-PID_Vars pid_vars_M1(0.0, 0.0, 0.0);
-PID_Vars pid_vars_M2(0.0, 0.0, 0.0);
-PID_Vars pid_vars_M3(0.0, 0.0, 0.0);
+PID_Vars pid_vars_M1(2.09, 0.79, 0.014);
+PID_Vars pid_vars_M2(2.09, 0.79, 0.014);
+PID_Vars pid_vars_M3(1.0, 0.0, 0.0);
 
 
 location hamr_loc;
@@ -221,35 +233,58 @@ void loop() {
       speed_act_M1 = get_speed(encoder_counts_M1, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
       speed_act_M2 = get_speed(encoder_counts_M2, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
       speed_act_M3 = get_ang_speed(encoder_counts_M3, TICKS_PER_REV_TURRET, t_elapsed);         
+
+      // get desired speed for diff drive
+      int use_dd_control = 2;
+      if (use_dd_control == 0) {
+        angle_control(dtheta_req, hamr_loc.dtheta, dtheta_cmd, speed_req_ddrive, &speed_req_M1, &speed_req_M2, WHEEL_DIST, WHEEL_RADIUS, t_elapsed);
+      } else if (use_dd_control == 1) {
+        speed_req_M1 = speed_req_ddrive;
+        speed_req_M2 = speed_req_ddrive;
+      } else { 
+        // use indiv setpoints
+      }
+
+      // set speeds on motors      
+      set_speed(&pid_vars_M1,
+                speed_req_M1,
+                speed_act_M1, 
+                t_elapsed, 
+                &PWM_M1,
+                PIN_M1_DRIVER_INA, 
+                PIN_M1_DRIVER_INB, 
+                PIN_M1_DRIVER_PWM);
+      set_speed(&pid_vars_M2,
+                speed_req_M2,
+                speed_act_M2, 
+                t_elapsed, 
+                &PWM_M2,
+                PIN_M2_DRIVER_INA, 
+                PIN_M2_DRIVER_INB, 
+                PIN_M2_DRIVER_PWM);
+      //set_servo_speed(&M3,pid_vars_M3, speed_req_turret, speed_act_turret, t_elapsed);
+
       
-      // compute PWM value
-      update_pid(&pid_vars_M1, &PWM_M1, speed_req_ddrive, speed_act_M1, t_elapsed);
-      update_pid(&pid_vars_M2, &PWM_M2, speed_req_ddrive, speed_act_M2, t_elapsed);
-      update_pid(&pid_vars_M3, &PWM_M3, speed_req_turret, speed_act_M3, t_elapsed);
-
-      set_speed(PWM_M1, PIN_M1_DRIVER_INA, PIN_M1_DRIVER_INB, PIN_M1_DRIVER_PWM);
-      set_speed(PWM_M2, PIN_M2_DRIVER_INA, PIN_M2_DRIVER_INB, PIN_M2_DRIVER_PWM);
-      set_speed(PWM_M3, PIN_M3_DRIVER_INA, PIN_M3_DRIVER_INB, PIN_M3_DRIVER_PWM);
-
+      //Serial.println(speed_act_M3, 4);
       /*
       PWM_M1 = (int) right_motor;
       PWM_M2 = (int) left_motor;
       PWM_M3 = (int) turret_motor;
       */
-/*
-      Serial.print(speed_act_M1, 4);
-      Serial.print(" (");
-      Serial.print(PWM_M1);
-      Serial.print("), ");
-      Serial.print(speed_act_M2, 4);
-      Serial.print(" (");
-      Serial.print(PWM_M2);
-      Serial.print(")\n");
-      Serial.print(curr_count_M1);
-      Serial.print(" ");
-      Serial.print(curr_count_M2);
-      Serial.print("\n");
-*/
+
+//      Serial.print(speed_act_M1, 4);
+//      Serial.print(" (");
+//      Serial.print(PWM_M1);
+//      Serial.print("), ");
+//      Serial.print(speed_act_M2, 4);
+//      Serial.print(" (");
+//      Serial.print(PWM_M2);
+//      Serial.print(")\n");
+
+//      Serial.print(curr_count_M1);
+//      Serial.print(" ");
+//      Serial.print(curr_count_M2);
+//      Serial.print("\n");
     }
 
     if(next_sensor_time < millis()){

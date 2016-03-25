@@ -1,13 +1,23 @@
+#include "math.h"
+#include "Arduino.h"
+
 typedef struct location {
+  // Current position
   float x;
   float y;
   float theta;
+
+  // Current velocity and angular rate
+  float ds;
+  float dtheta;
 
   // Constructor
   location() { 
     x = 0.0;
     y = 0.0;
     theta = 0.0;
+    ds = 0.0;
+    dtheta = 0.0;
   }
 
   // Update location using encoder integration
@@ -19,13 +29,28 @@ typedef struct location {
     float left_rot = encoder_counts_left / ticks_per_rev;
     
     // Calculate displacement
-    float delta_s = wheel_rad * (right_rot + left_rot) / 2.0; // linear displacement
-    float delta_theta = wheel_rad / wheel_dist * (right_rot - left_rot);  // angular displacement
+    ds = wheel_rad * (right_rot + left_rot) / 2.0; // linear displacement
+    dtheta = (wheel_rad / wheel_dist) * (right_rot - left_rot);  // angular displacement
 
     // Update variables
-    x = x + delta_s * cos(theta);
-    y = y + delta_s * sin(theta);
-    theta = theta + delta_theta;
+    float dx = ds * cos(theta);
+    float dy = ds * sin(theta);
+    x = x + dx;
+    y = y + dy;
+    theta = theta + dtheta;
+
+    Serial.print("x: ");
+    Serial.print(x);
+    Serial.print(", ");
+    Serial.print("y: ");
+    Serial.print(y);
+    Serial.print(", ");
+    Serial.print("theta (deg): ");
+    Serial.print(180 * theta / PI);
+    Serial.print(", ");
+    Serial.print("dtheta (deg/s): ");
+    Serial.print(180 * dtheta / PI);
+    Serial.print("\n");
   }
 };
 

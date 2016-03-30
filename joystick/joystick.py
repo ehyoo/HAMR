@@ -7,7 +7,7 @@ import hamr_serial
 from hamr_constants import *
 
 #update this to the HAMR port
-port = 'COM4'
+port = '/dev/tty.usbmodem1411'
 baudrate = 250000
 
 def init_joystick():
@@ -77,7 +77,7 @@ def main():
         # obtain signals
         x = commands[0]     # left/right
         y = -commands[1]    # forward/backward
-        theta = commands[3] # rotation
+        theta = commands[2] # rotation
 
         # round signals
         sig_r = str(int(y * 10) / 10.0)

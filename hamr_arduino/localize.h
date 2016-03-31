@@ -44,18 +44,18 @@ typedef struct location {
     x = x + dx;
     y = y + dy;
 
-    Serial.print("x: ");
-    Serial.print(x);
-    Serial.print(", ");
-    Serial.print("y: ");
-    Serial.print(y);
-    Serial.print(", ");
-    Serial.print("theta (deg): ");
-    Serial.print(theta * (180.0/PI));
-    Serial.print(", ");
-    Serial.print("dtheta (deg/s): ");
-    Serial.print(w * (180.0/PI));
-    Serial.print("\n");
+//    Serial.print("x: ");
+//    Serial.print(x);
+//    Serial.print(", ");
+//    Serial.print("y: ");
+//    Serial.print(y);
+//    Serial.print(", ");
+//    Serial.print("theta (deg): ");
+//    Serial.print(theta * (180.0/PI));
+//    Serial.print(", ");
+//    Serial.print("dtheta (deg/s): ");
+//    Serial.print(w * (180.0/PI));
+//    Serial.print("\n");
   }
 };
 

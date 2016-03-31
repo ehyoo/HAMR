@@ -22,15 +22,15 @@ void angle_control(float dtheta_req, float dtheta_act, float dtheta_cmd, float s
 //  dtheta_cmd = dd_ctrl.update_pid(dtheta_req * PI/180.0, dtheta_act, t);
   dtheta_cmd = dd_ctrl.update_pid(dtheta_req * PI, dtheta_act, t); // USE FOR CONTROLLER INPUT: maps [-1,1]->[-PI,PI] rads
 
-  Serial.print("dtheta_req: ");
-  Serial.print(dtheta_req);
-  Serial.print(", ");
-  Serial.print("dtheta_act: ");
-  Serial.print(dtheta_act * 180/PI);
-  Serial.print(", ");
-  Serial.print("dtheta_cmd: ");
-  Serial.print(dtheta_cmd * 180/PI);
-  Serial.print("\n");
+//  Serial.print("dtheta_req: ");
+//  Serial.print(dtheta_req);
+//  Serial.print(", ");
+//  Serial.print("dtheta_act: ");
+//  Serial.print(dtheta_act * 180/PI);
+//  Serial.print(", ");
+//  Serial.print("dtheta_cmd: ");
+//  Serial.print(dtheta_cmd * 180/PI);
+//  Serial.print("\n");
 
   float ang_speed = (wheel_dist/2.0) * (dtheta_act + dtheta_cmd);
   
@@ -45,16 +45,16 @@ void angle_control(float dtheta_req, float dtheta_act, float dtheta_cmd, float s
     *M2_speed = speed_req + ang_speed;
   }
         
-  Serial.print("speed_req: ");
-  Serial.print(speed_req);
-  Serial.print(" +/- ");
-  Serial.print((wheel_dist/2.0) * 0.5 * (dtheta_act + dtheta_cmd));
-  Serial.print(", ");
-  Serial.print("M1_speed: ");
-  Serial.print(*M1_speed);
-  Serial.print(", ");
-  Serial.print("M2_speed: ");
-  Serial.print(*M2_speed);
-  Serial.print("\n\n");
+//  Serial.print("speed_req: ");
+//  Serial.print(speed_req);
+//  Serial.print(" +/- ");
+//  Serial.print((wheel_dist/2.0) * 0.5 * (dtheta_act + dtheta_cmd));
+//  Serial.print(", ");
+//  Serial.print("M1_speed: ");
+//  Serial.print(*M1_speed);
+//  Serial.print(", ");
+//  Serial.print("M2_speed: ");
+//  Serial.print(*M2_speed);
+//  Serial.print("\n\n");
 }
 

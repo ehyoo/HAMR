@@ -12,32 +12,31 @@
 // float hamr_angle = 0;
 
 
-/* These following values are modifiable through serial communication*/
+/* These following values are modifiable through serial communication or determined by a control output*/
 int send_data = 0;  // whether the arduino should send data 
-
 // CONTROL PARAMETER
 
-// PID motors
-float r_Kp = 0; float r_Ki = 0; float r_Kd = 0;
-float l_Kp = 0; float l_Ki = 0; float l_Kd = 0;
-float t_Kp = 0; float t_Ki = 0; float t_Kd = 0;
+// motor PID parameters
+float m1_Kp = 0; float m1_Ki = 0; float m1_Kd = 0;
+float m2_Kp = 0; float m2_Ki = 0; float m2_Kd = 0;
+// float mt_Kp = 0; float mt_Ki = 0; float mt_Kd = 0;
 
-// Differential Drive
+// Differential Drive velocity and rotation PID parameters
 float dd_v_Kp = 0; float dd_v_Ki = 0; float dd_v_Kd = 0; // DD velocity
 float dd_r_Kp = 0; float dd_r_Ki = 0; float dd_r_Kd = 0; // DD rotation
 
 // Holonomic
-float x_Kp = 0; float x_Ki = 0; float x_Kd = 0;
-float y_Kp = 0; float y_Ki = 0; float y_Kd = 0;
-// float t_Kp = 0; float t_Ki = 0; float t_Kd = 0;
+// float x_Kp = 0; float x_Ki = 0; float x_Kd = 0;
+// float y_Kp = 0; float y_Ki = 0; float y_Kd = 0;
+// float r_Kp = 0; float r_Ki = 0; float r_Kd = 0;
 
 // DESIRED VALUES        
-float speed_req_ddrive = 0.0; // Diff Drive (m/s)
-float speed_req_ang = 0.0;    // desired angular velocity for Diff Drive: set between [-1,1] by controller, mapped to [-90,90] degrees in code
-float speed_req_turret = 0.0; // Turret (deg/s)
+float desired_dd_v = 0.0; // Diff Drive (m/s)
+float desired_dd_r = 0.0; // desired angular velocity for Diff Drive: set between [-1,1] by controller, mapped to [-90,90] degrees in code
+// float speed_req_turret = 0.0; // Turret (deg/s)
 
 // motor velocities
-float right_motor = 0; float left_motor = 0; float turret_motor = 0; 
+float desired_m1_v = 0; float desired_m2_v = 0; float desired_mt_v = 0;
 
 /* -------------------------------------------------------*/
 /* -------------------------------------------------------*/
@@ -142,14 +141,14 @@ void loop() {
       // get desired speed for diff drive
       int use_dd_control = 1;
       if (use_dd_control == 0) {
-        speed_req_M1 = speed_req_ddrive;
-        speed_req_M2 = speed_req_ddrive;
+        speed_req_M1 = desired_dd_v;
+        speed_req_M2 = desired_dd_v;
       } else if (use_dd_control == 1) {
-        angle_control(speed_req_ang, hamr_loc.w, dtheta_cmd, speed_req_ddrive, &speed_req_M1, &speed_req_M2, WHEEL_DIST, WHEEL_RADIUS, t_elapsed);
+        angle_control(desired_dd_r, hamr_loc.w, dtheta_cmd, desired_dd_v, &speed_req_M1, &speed_req_M2, WHEEL_DIST, WHEEL_RADIUS, t_elapsed);
       } else { 
         // use indiv setpoints
-        speed_req_M1 = (speed_req_ddrive - (WHEEL_DIST/2.0) * PI/2.0);
-        speed_req_M2 = (speed_req_ddrive + (WHEEL_DIST/2.0) * PI/2.0);
+        speed_req_M1 = (desired_dd_v - (WHEEL_DIST/2.0) * PI/2.0);
+        speed_req_M2 = (desired_dd_v + (WHEEL_DIST/2.0) * PI/2.0);
       }
 
       // set speeds on motors      
@@ -213,36 +212,36 @@ void read_serial(){
         break;
 
       // case SIG_HOLO_X:
-      //   sig_var = &speed_req_ddrive;
+      //   sig_var = &desired_dd_v;
       //   break;
 
       // case SIG_HOLO_Y:
-      //   sig_var = &speed_req_ddrive;
+      //   sig_var = &desired_dd_v;
       //   break;
 
       // case SIG_HOLO_T:
-      //   sig_var = &speed_req_ang;
+      //   sig_var = &desired_dd_r;
       //   break;
 
       case SIG_DD_V:
-        sig_var = &speed_req_ddrive;
+        sig_var = &desired_dd_v;
         break;
 
       case SIG_DD_R:
-        sig_var = &speed_req_ang;
+        sig_var = &desired_dd_r;
         break;
 
       // motor velocities
       case SIG_R_MOTOR:
-        sig_var = &right_motor;
+        sig_var = &desired_m1_v;
         break;
 
       case SIG_L_MOTOR:
-        sig_var = &left_motor;
+        sig_var = &desired_m2_v;
         break;
 
       case SIG_T_MOTOR:
-        sig_var = &turret_motor;
+        sig_var = &desired_mt_v;
         break;
 
       // right motor PID
@@ -300,7 +299,7 @@ void send_serial(){
        Serial.println(millis() - startMilli); // total time
        Serial.println(speed_act_M1, 4);
        Serial.println(speed_act_M2, 4);
-       Serial.println(speed_req_ddrive);
+       Serial.println(desired_dd_v);
        Serial.println(0);
    }
 }

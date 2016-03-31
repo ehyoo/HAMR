@@ -19,8 +19,8 @@ void set_speed(PID_Vars* pid,
                int pin_driver_inB, 
                int pin_pwm) {
 
-  float pid_pwm = pid->update_pid(speed_req, speed_act, t_elapsed);
-  *pwm_val = round(constrain(pid_pwm * 255.0, -255, 255));
+  float speed_cmd = pid->update_pid(speed_req, speed_act, t_elapsed);
+  *pwm_val = round(constrain(speed_act + speed_cmd, -255, 255));
 
   if (*pwm_val < 0) {
     // reverse direction

@@ -20,7 +20,10 @@ void set_speed(PID_Vars* pid,
                int pin_pwm) {
 
   float speed_cmd = pid->update_pid(speed_req, speed_act, t_elapsed);
-  *pwm_val = round(constrain(speed_act + speed_cmd, -255, 255));
+  //*pwm_val = round(map(speed_act + speed_cmd, -1.2, 1.2, -255.0, 255.0));
+  *pwm_val = round((speed_act + speed_cmd) * 255.0);
+
+  //*pwm_val = round(constrain(speed_act + speed_cmd, -255, 255));
 
   if (*pwm_val < 0) {
     // reverse direction

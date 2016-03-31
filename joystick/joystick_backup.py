@@ -1,32 +1,14 @@
 import os
 import sys
-import platform
-
 import pygame
 #from pygame.locals import *
 import time
 import hamr_serial
 from hamr_constants import *
 
-# set precision values for output from joystick
-Y_PRECISION = .1
-X_PRECISION = .1
-THETA_PRECISION = .1
-
-
-THETA_POSITION = 2
-if platform.system() is 'Windows':
-    THETA_POSITION = 3
-
-
 #update this to the HAMR port
-port = 'COM4'
+port = '/dev/tty.usbmodem1411'
 baudrate = 250000
-
-
-def precision(val, prec):
-    return round(val / prec) * prec
-
 
 def init_joystick():
     pygame.init()
@@ -54,7 +36,6 @@ def init_joystick():
 
     return my_joystick
 
-
 def get_readings(my_joystick, use_minimal):
     g_keys = pygame.event.get()
 
@@ -75,30 +56,19 @@ def get_readings(my_joystick, use_minimal):
             commands.append(my_joystick.get_button(i))
 
     return commands
-   
-
-# initialize joystick and serial connection
-def initialize_joystick():
-    global joystick
+        
+def main():
     joystick = init_joystick()
-    time.sleep(1)
 
-
-def initialize_hamr():
-    global device
     device = hamr_serial.initialize(port, baudrate, timeout_=2, write_timeout_=2)
     hamr_serial.connect(device)
     time.sleep(1)
+    # device.write(b'1')
+    # device.write(b'1')
 
-
-def read_joystick():
-    global val_dd_v_prev
-    global sig_l_prev
-    global val_dd_r_prev
-
-    val_dd_v_prev = ""
-    sig_l_prev = ""
-    val_dd_r_prev = ""
+    sig_r_prev = 0
+    sig_l_prev = 0
+    sig_t_prev = 0
 
     while (True):
         time.sleep(.1)
@@ -107,59 +77,36 @@ def read_joystick():
         # obtain signals
         x = commands[0]     # left/right
         y = -commands[1]    # forward/backward
-        theta = commands[THETA_POSITION] # rotation
-        send_signal = commands[4] # index finger button. controls signals
+        theta = commands[2] # rotation
 
         # round signals
-        val_dd_v = str(precision(y, Y_PRECISION))
-        sig_l = str(precision(x, X_PRECISION))
-        val_dd_r = str(precision(theta, THETA_PRECISION))
+        sig_r = str(int(y * 10) / 10.0)
+        sig_l = str(int(x * 10) / 10.0)
+        sig_t = str(int(theta * 10) / 10.0)
 
         # send data to HAMR
-        if ((val_dd_v != val_dd_v_prev) or (val_dd_r != val_dd_r_prev)) and send_signal:
-        # if equals_float(val_dd_v, val_dd_v_prev) or equals_float(val_dd_r, val_dd_r_prev):
+        if(sig_r != sig_r_prev or sig_t != sig_t_prev):
             sending = ""
             if device.is_open:
                 sending = "sending:"
 
-                device.write(SIG_DD_V)
-                device.write(val_dd_v)
+                device.write(SIG_R_MOTOR)
+                device.write(sig_r)
                 time.sleep(.1)
 
-                # uncomment this part to send rotation signal
-                # device.write(SIG_DD_R)
-                # device.write(val_dd_r)
-                # time.sleep(.1)
-
-                val_dd_r_prev = val_dd_r
-                val_dd_v_prev = val_dd_v
-
+                # uncomment this part to send these signals
                 # device.write(SIG_L_MOTOR)
                 # device.write(sig_l)
                 # time.sleep(.1)
-                # sig_l_prev = sig_l
 
-            print sending + val_dd_v + ", " + val_dd_r
+                device.write(SIG_T_MOTOR)
+                device.write(sig_t)
+                time.sleep(.1)
 
+                sig_r_prev = sig_t
+                sig_l_prev = sig_l
+                sig_t_prev = sig_r
 
-def main():
-    initialize_joystick()
-    initialize_hamr()
-    read_joystick()
-
-
-def external_main(dev):
-    global device
-    device = dev
-    initialize_joystick()
-    read_joystick()
-
-
-def equals_float(a, b):
-    if abs(a-b) < .001: 
-        return True
-    else: 
-        return False
-
+            print sending + sig_r + ", " + sig_t
 
 if __name__ == '__main__': main()

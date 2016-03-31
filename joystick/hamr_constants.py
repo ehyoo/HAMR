@@ -36,6 +36,13 @@ GRAPH_ROWS = 2
 SIG_START_LOG = b'['
 SIG_STOP_LOG = b']'
 
+SIG_HOLO_X = b'x'
+SIG_HOLO_Y = b'y'
+SIG_HOLO_T = b'a'
+
+SIG_DD_V = b'd'
+SIG_DD_R = b'D'
+
 SIG_R_MOTOR = b'r'
 SIG_L_MOTOR = b'l'
 SIG_T_MOTOR = b't'

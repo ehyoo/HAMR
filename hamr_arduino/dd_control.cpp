@@ -9,7 +9,7 @@ void trajectory(int set_angle, float set_velocity, location* loc) {
 }
 */
 
-PID_Vars dd_ctrl(1.0, 0.0, 0.0);
+PID_Vars dd_ctrl(0.5, 0.0, 0.0);
 
 /*
  * dtheta_req: angular velocity setpoint
@@ -18,20 +18,43 @@ PID_Vars dd_ctrl(1.0, 0.0, 0.0);
  */
 void angle_control(float dtheta_req, float dtheta_act, float dtheta_cmd, float speed_req,
                    float* M1_speed, float* M2_speed, float wheel_dist, float wheel_rad, float t) {  
-  
-  dtheta_cmd = dd_ctrl.update_pid(dtheta_req, dtheta_act, t);
+
+//  dtheta_cmd = dd_ctrl.update_pid(dtheta_req * PI/180.0, dtheta_act, t);
+  dtheta_cmd = dd_ctrl.update_pid(dtheta_req * PI, dtheta_act, t); // USE FOR CONTROLLER INPUT: maps [-1,1]->[-PI,PI] rads
+
   Serial.print("dtheta_req: ");
   Serial.print(dtheta_req);
   Serial.print(", ");
   Serial.print("dtheta_act: ");
-  Serial.print(dtheta_act);
+  Serial.print(dtheta_act * 180/PI);
   Serial.print(", ");
   Serial.print("dtheta_cmd: ");
-  Serial.print(dtheta_cmd);
+  Serial.print(dtheta_cmd * 180/PI);
   Serial.print("\n");
+
+  float ang_speed = (wheel_dist/2.0) * (dtheta_act + dtheta_cmd);
+  
   // Control law
   // Determine speeds for each indiv motor to achieve angle at speed
-  *M1_speed = speed_req - (wheel_dist/wheel_rad) * 0.5 * dtheta_cmd;
-  *M2_speed = speed_req + (wheel_dist/wheel_rad) * 0.5 * dtheta_cmd;
+  if (dtheta_req == 0.0) {
+    // Remove any turning if not input in
+    *M1_speed = speed_req;
+    *M2_speed = speed_req;
+  } else {
+    *M1_speed = speed_req - ang_speed;
+    *M2_speed = speed_req + ang_speed;
+  }
+        
+  Serial.print("speed_req: ");
+  Serial.print(speed_req);
+  Serial.print(" +/- ");
+  Serial.print((wheel_dist/2.0) * 0.5 * (dtheta_act + dtheta_cmd));
+  Serial.print(", ");
+  Serial.print("M1_speed: ");
+  Serial.print(*M1_speed);
+  Serial.print(", ");
+  Serial.print("M2_speed: ");
+  Serial.print(*M2_speed);
+  Serial.print("\n\n");
 }
 

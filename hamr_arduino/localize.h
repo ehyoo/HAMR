@@ -3,41 +3,46 @@
 
 typedef struct location {
   // Current position
-  float x;
-  float y;
-  float theta;
+  float x;     // in meters
+  float y;     // in meters
+  float theta; // in rad
 
-  // Current velocity and angular rate
-  float ds;
-  float dtheta;
+  // Current linear and angular
+  float v; // linear velocity (m/s)
+  float w; // angular velocity (rad/s)
 
   // Constructor
   location() { 
     x = 0.0;
     y = 0.0;
     theta = 0.0;
-    ds = 0.0;
-    dtheta = 0.0;
+    v = 0.0;
+    w = 0.0;
   }
 
   // Update location using encoder integration
-  void update(int encoder_counts_left, float encoder_counts_right, 
-              float ticks_per_rev, float wheel_rad, float wheel_dist) {
-    
-    // Find number of wheel rotations from encoder counts
-    float right_rot = encoder_counts_right / ticks_per_rev; 
-    float left_rot = encoder_counts_left / ticks_per_rev;
-    
-    // Calculate displacement
-    ds = wheel_rad * (right_rot + left_rot) / 2.0; // linear displacement
-    dtheta = (wheel_rad / wheel_dist) * (right_rot - left_rot);  // angular displacement
+  void update(float r_speed, float l_speed, float wheel_dist, float ts) {
+
+    v = (l_speed + r_speed) / 2.0;
+    w = (l_speed - r_speed) / wheel_dist;
+
+    // Calculate velocities
+    float ds = v * ts / 1000.0;
+    float dtheta = w * ts / 1000.0;
 
     // Update variables
     float dx = ds * cos(theta);
     float dy = ds * sin(theta);
+
+    theta = theta + dtheta;
+//    if (theta > PI) {
+//      theta = theta - PI;
+//    } else if (theta < -PI) {
+//      theta = theta + PI;
+//    }
+     
     x = x + dx;
     y = y + dy;
-    theta = theta + dtheta;
 
     Serial.print("x: ");
     Serial.print(x);
@@ -46,10 +51,10 @@ typedef struct location {
     Serial.print(y);
     Serial.print(", ");
     Serial.print("theta (deg): ");
-    Serial.print(180 * theta / PI);
+    Serial.print(theta * (180.0/PI));
     Serial.print(", ");
     Serial.print("dtheta (deg/s): ");
-    Serial.print(180 * dtheta / PI);
+    Serial.print(w * (180.0/PI));
     Serial.print("\n");
   }
 };

@@ -168,12 +168,12 @@ void setup() {
 unsigned long lastMilli = 0;                   
 unsigned long lastMilliPrint = 0; 
              
-float speed_req_ddrive = 0.0; // desired forward velocity for Diff Drive (m/s)
-float dtheta_req = 0.0;       // desired rotational velocity for Diff Drive (deg/s)
+float speed_req_ddrive = 0.0; // desired linear velocity for Diff Drive (m/s)
+float ang_speed_req = 0.0;   // desired angular velocity for Diff Drive: set between [-1,1] by controller, mapped to [-90,90] degrees in code
 float speed_req_turret = 0.0; // desired rotational velocity for Turret (deg/s)
 
-float speed_req_M1 = -0.2;
-float speed_req_M2 = 0.2;
+float speed_req_M1 = 0.0;
+float speed_req_M2 = 0.0;
 
 float speed_act_M1 = 0.0;  //actual value (m/s)
 float speed_act_M2 = 0.0;  //actual value (m/s)
@@ -194,8 +194,10 @@ volatile long prev_count_M3 = 0; // M3 encoder revolution counter
 
 
 /* PID LOOP VARIABLES */
-PID_Vars pid_vars_M1(2.09, 0.79, 0.014);
-PID_Vars pid_vars_M2(2.09, 0.79, 0.014);
+//PID_Vars pid_vars_M1(2.09, 0.79, 0.014);
+//PID_Vars pid_vars_M2(2.09, 0.79, 0.014);
+PID_Vars pid_vars_M1(1.0, 0.0, 0.0);
+PID_Vars pid_vars_M2(1.0, 0.0, 0.0);
 PID_Vars pid_vars_M3(1.0, 0.0, 0.0);
 
 
@@ -226,23 +228,32 @@ void loop() {
       prev_count_M1 = curr_count_M1;
       prev_count_M2 = curr_count_M2;
       prev_count_M3 = curr_count_M3;
-      
-      hamr_loc.update(encoder_counts_M1, encoder_counts_M2, TICKS_PER_REV_DDRIVE, WHEEL_RADIUS, WHEEL_DIST);
 
       // compute speed
       speed_act_M1 = get_speed(encoder_counts_M1, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
       speed_act_M2 = get_speed(encoder_counts_M2, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
       speed_act_M3 = get_ang_speed(encoder_counts_M3, TICKS_PER_REV_TURRET, t_elapsed);         
+      
+      hamr_loc.update(speed_act_M1, speed_act_M2, WHEEL_DIST, t_elapsed);
+      
+     //Serial.println((millis() - startMilli)/1000.0);
+
+//      if (abs(hamr_loc.theta) > PI) {
+//        speed_req_M1 = 0.0;
+//        speed_req_M2 = 0.0;
+//      }
 
       // get desired speed for diff drive
-      int use_dd_control = 2;
+      int use_dd_control = 1;
       if (use_dd_control == 0) {
-        angle_control(dtheta_req, hamr_loc.dtheta, dtheta_cmd, speed_req_ddrive, &speed_req_M1, &speed_req_M2, WHEEL_DIST, WHEEL_RADIUS, t_elapsed);
-      } else if (use_dd_control == 1) {
         speed_req_M1 = speed_req_ddrive;
         speed_req_M2 = speed_req_ddrive;
+      } else if (use_dd_control == 1) {
+        angle_control(ang_speed_req, hamr_loc.w, dtheta_cmd, speed_req_ddrive, &speed_req_M1, &speed_req_M2, WHEEL_DIST, WHEEL_RADIUS, t_elapsed);
       } else { 
         // use indiv setpoints
+        speed_req_M1 = (speed_req_ddrive - (WHEEL_DIST/2.0) * PI/2.0);
+        speed_req_M2 = (speed_req_ddrive + (WHEEL_DIST/2.0) * PI/2.0);
       }
 
       // set speeds on motors      
@@ -266,11 +277,6 @@ void loop() {
 
       
       //Serial.println(speed_act_M3, 4);
-      /*
-      PWM_M1 = (int) right_motor;
-      PWM_M2 = (int) left_motor;
-      PWM_M3 = (int) turret_motor;
-      */
 
 //      Serial.print(speed_act_M1, 4);
 //      Serial.print(" (");
@@ -381,7 +387,6 @@ void init_serial(){
   i = 0;
   Serial.setTimeout(0);
 }
-
 /* read a byte from serial. Perform appropriate action based on byte*/
 void read_serial(){
   String str;
@@ -412,7 +417,7 @@ void read_serial(){
         break;
 
       case SIG_T_MOTOR:
-        sig_var = &turret_motor;
+        sig_var = &ang_speed_req;
         break;
 
       // right motor PID
@@ -471,7 +476,7 @@ void send_serial(){
        Serial.println(speed_act_M1, 4);
        Serial.println(speed_act_M2, 4);
        Serial.println(speed_req_ddrive);
-       Serial.println(0);
+       Serial.println(hamr_angle);
        i = i == 199 ? 0: i + 1;
    }
 }

@@ -20,8 +20,10 @@ void angle_control(float dtheta_req, float dtheta_act, float dtheta_cmd, float s
                    float* M1_speed, float* M2_speed, float wheel_dist, float wheel_rad, float t) {  
 
 //  dtheta_cmd = dd_ctrl.update_pid(dtheta_req * PI/180.0, dtheta_act, t);
-  dtheta_cmd = dd_ctrl.update_pid(dtheta_req * PI, dtheta_act, t); // USE FOR CONTROLLER INPUT: maps [-1,1]->[-PI,PI] rads
-
+  
+  float pid_output = dd_ctrl.update_pid(dtheta_req * PI, dtheta_act, t); // USE FOR CONTROLLER INPUT: maps [-1,1]->[-PI,PI] rads
+  dtheta_cmd += pid_output;
+  
 //  Serial.print("dtheta_req: ");
 //  Serial.print(dtheta_req);
 //  Serial.print(", ");
@@ -32,8 +34,9 @@ void angle_control(float dtheta_req, float dtheta_act, float dtheta_cmd, float s
 //  Serial.print(dtheta_cmd * 180/PI);
 //  Serial.print("\n");
 
-  float ang_speed = (wheel_dist/2.0) * (dtheta_act + dtheta_cmd);
-  
+  // float ang_speed = (wheel_dist/2.0) * (dtheta_act + dtheta_cmd);
+  float ang_speed = (wheel_dist/2.0) * (dtheta_cmd);
+
   // Control law
   // Determine speeds for each indiv motor to achieve angle at speed
   if (dtheta_req == 0.0) {

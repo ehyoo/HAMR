@@ -21,7 +21,7 @@ int send_data = 0;  // whether the arduino should send data
 
 // differential drive velocities
 float desired_dd_v = 0.0; // Diff Drive (m/s)
-float desired_dd_r = 0.0; // desired angular velocity for Diff Drive: set between [-1,1] by controller, mapped to [-90,90] degrees in code
+float desired_dd_r = 1.0; // desired angular velocity for Diff Drive: set between [-1,1] by controller, mapped to [-90,90] degrees in code
 // float speed_req_turret = 0.0; // Turret (deg/s)
 
 // motor velocities
@@ -35,8 +35,6 @@ float m1_v_cmd = 0.0;
 float m2_v_cmd = 0.0;
 
 /* CONTROL PARAMETERS */
-//PID_Vars pid_vars_M1(2.09, 0.79, 0.014);
-//PID_Vars pid_vars_M2(2.09, 0.79, 0.014);
 PID_Vars pid_vars_M1(0.15, 0.0, 0.04);
 PID_Vars pid_vars_M2(0.15, 0.0, 0.04);
 PID_Vars pid_vars_M3(0.01, 0.0, 0.0);
@@ -108,16 +106,17 @@ void loop() {
     t_elapsed = (float) (millis() - lastMilli);
     lastMilli = millis();
     
-    // read encoders
-    sense_motors();
+    sense_motors(); // read encoders
 
-    // get desired speed for diff drive
+    // get desired speed
     int use_dd_control = 1;
     if (use_dd_control == 0) {
+      // PID velocity control, same input to both motors
       desired_m1_v = desired_dd_v;
       desired_m2_v = desired_dd_v;
     } else if (use_dd_control == 1) {
-      angle_control(desired_dd_r, hamr_loc.w, dtheta_cmd, desired_dd_v, &desired_m1_v, &desired_m2_v, WHEEL_DIST, WHEEL_RADIUS, t_elapsed);
+      // Differential drive control
+      angle_control(desired_dd_r, hamr_loc.w, &dtheta_cmd, desired_dd_v, &desired_m1_v, &desired_m2_v, WHEEL_DIST, WHEEL_RADIUS, t_elapsed);
     } else {
       // use indiv setpoints
       desired_m1_v = (desired_dd_v - (WHEEL_DIST/2.0) * PI/2.0);
@@ -144,7 +143,13 @@ void loop() {
               PIN_M2_DRIVER_INB, 
               PIN_M2_DRIVER_PWM);
     //set_servo_speed(&M3,pid_vars_M3, speed_req_turret, speed_act_turret, t_elapsed);
-      
+//
+//    if (hamr_loc.theta > 109.0*PI/180.0) {
+//        analogWrite(PIN_M1_DRIVER_PWM,0);
+//        analogWrite(PIN_M2_DRIVER_PWM,0);
+//    }
+
+    
     // if(next_sensor_time < millis()){
     //   compute_imu(SENSOR_LOOPTIME);
     //   hamr_angle = get_current_angle();

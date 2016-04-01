@@ -9,18 +9,17 @@ void trajectory(int set_angle, float set_velocity, location* loc) {
 }
 */
 
-PID_Vars dd_ctrl(0.1, 0.0, 0.0);
 
 /*
  * dtheta_req: angular velocity setpoint
  * dtheta_act: measured angular velocity from encoders
  * dtheta_cmd: value given to control law to change angle
  */
-void angle_control(float dtheta_req, float dtheta_act, float* dtheta_cmd, float speed_req,
+void angle_control(PID_Vars* pid, float dtheta_req, float dtheta_act, float* dtheta_cmd, float speed_req,
                    float* M1_speed, float* M2_speed, float wheel_dist, float wheel_rad, float t) {  
 
 //  dtheta_cmd = dd_ctrl.update_pid(dtheta_req * PI/180.0, dtheta_act, t);
-  float pid_output = dd_ctrl.update_pid(dtheta_req * PI, dtheta_act, t); // USE FOR CONTROLLER INPUT: maps [-1,1]->[-PI,PI] rads
+  float pid_output = pid->update_pid(dtheta_req * PI, dtheta_act, t); // USE FOR CONTROLLER INPUT: maps [-1,1]->[-PI,PI] rads
   *dtheta_cmd += pid_output;
   
 //  Serial.print("dtheta_req: ");

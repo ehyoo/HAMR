@@ -21,7 +21,7 @@ int send_data = 0;  // whether the arduino should send data
 
 // differential drive velocities
 float desired_dd_v = 0.0; // Diff Drive (m/s)
-float desired_dd_r = 1.0; // desired angular velocity for Diff Drive: set between [-1,1] by controller, mapped to [-90,90] degrees in code
+float desired_dd_r = 0.0; // desired angular velocity for Diff Drive: set between [-1,1] by controller, mapped to [-90,90] degrees in code
 // float speed_req_turret = 0.0; // Turret (deg/s)
 
 // motor velocities
@@ -38,6 +38,7 @@ float m2_v_cmd = 0.0;
 PID_Vars pid_vars_M1(0.15, 0.0, 0.04);
 PID_Vars pid_vars_M2(0.15, 0.0, 0.04);
 PID_Vars pid_vars_M3(0.01, 0.0, 0.0);
+PID_Vars dd_ctrl(0.1, 0.0, 0.0);
 PID_Vars pid_vars_dd_v(1.0, 0.0, 0.0);
 PID_Vars pid_vars_dd_r(1.0, 0.0, 0.0);
 // PID_Vars pid_vars_h_x(1.0, 0.0, 0.0);
@@ -116,7 +117,7 @@ void loop() {
       desired_m2_v = desired_dd_v;
     } else if (use_dd_control == 1) {
       // Differential drive control
-      angle_control(desired_dd_r, hamr_loc.w, &dtheta_cmd, desired_dd_v, &desired_m1_v, &desired_m2_v, WHEEL_DIST, WHEEL_RADIUS, t_elapsed);
+      angle_control(&dd_ctrl, desired_dd_r, hamr_loc.w, &dtheta_cmd, desired_dd_v, &desired_m1_v, &desired_m2_v, WHEEL_DIST, WHEEL_RADIUS, t_elapsed);
     } else {
       // use indiv setpoints
       desired_m1_v = (desired_dd_v - (WHEEL_DIST/2.0) * PI/2.0);
@@ -249,15 +250,15 @@ void read_serial(){
 
       // turrent motor PID
       case SIG_T_KP:
-        sig_var = &(pid_vars_M3.Kp);
+        sig_var = &(dd_ctrl.Kp);
         break;
 
       case SIG_T_KI:
-        sig_var = &(pid_vars_M3.Ki);
+        sig_var = &(dd_ctrl.Ki);
         break;
 
       case SIG_T_KD:
-        sig_var = &(pid_vars_M3.Kd);
+        sig_var = &(dd_ctrl.Kd);
         break;
     }
 

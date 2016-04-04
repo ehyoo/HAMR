@@ -6,10 +6,6 @@
 #include "constants.h"
 
 
-/* IMU settings */
-// const float SENSOR_LOOPTIME = .005;
-// long next_sensor_time = millis();
-// float hamr_angle = 0;
 
 /* -------------------------------------------------------*/
 /* These following values are modifiable through serial communication or determined by a control output */
@@ -17,7 +13,7 @@ int send_data = 0;  // whether the arduino should send data
 
 /* DESIRED VALUES */
 // holonomic velocities 
-// float h_x = 0; float h_y = 0; float h_r = 0;
+// float desired_h_x = 0; float desired_h_y = 0; float desired_h_r = 0;
 
 // differential drive velocities
 float desired_dd_v = 0.0; // Diff Drive (m/s)
@@ -51,7 +47,7 @@ PID_Vars pid_vars_dd_r(1.0, 0.0, 0.0);
 
 
 /* -------------------------------------------------------*/
-/* sensor values */
+/* SENSORS */
 // encoders
 // Encoder counting interrupt functions
 void rencoderA_M1(); void rencoderB_M1();
@@ -75,20 +71,29 @@ float sensed_m3_v = 0.0;
 
 /* velocity commands */
 float dtheta_cmd = 0.0;
+
+/* IMU settings */
+const float SENSOR_LOOPTIME = .01;
+long next_sensor_time = millis();
+float hamr_angle = 0;
 /* -------------------------------------------------------*/
 /* -------------------------------------------------------*/
 
 Servo M3;
 
+// timing: main loop
 unsigned long startMilli;
 unsigned long lastMilli = 0;   
 float t_elapsed;                
 
+// dd localization
 location hamr_loc;
 
 void setup() {
   init_serial();    // initialize serial communication
   init_actuators(); // initialiaze motors and servos
+  delay(100);
+  // initialize_imu();
   //initialize_imu();
   startMilli = millis();
 }
@@ -149,23 +154,26 @@ void loop() {
 //        analogWrite(PIN_M1_DRIVER_PWM,0);
 //        analogWrite(PIN_M2_DRIVER_PWM,0);
 //    }
-
     
+
+    // uncomment this to read IMU
     // if(next_sensor_time < millis()){
     //   compute_imu(SENSOR_LOOPTIME);
+    //   // print_raw_imu();
+    //   // Serial.println("");
     //   hamr_angle = get_current_angle();
+    //   Serial.println(hamr_angle);
     // }
     // next_sensor_time = millis() + SENSOR_LOOPTIME * 1000;
 
-    //read_serial(); //see end of file for this function
   }
 
 }
 
 void init_serial(){
   Serial.begin(250000);
-  Serial.println("Arduino Ready\n"); //needs to be sent to detect that arduino has initialized
-  Serial.setTimeout(0);
+  Serial.println("Arduino Ready\n"); // needs to be sent to detect that arduino has initialized
+  Serial.setTimeout(0);              // required to speed up serial reading 
 }
 
 /* read a byte from serial. Perform appropriate action based on byte*/

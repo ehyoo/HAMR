@@ -127,9 +127,9 @@ def read_joystick():
                 time.sleep(.1)
 
                 # uncomment this part to send rotation signal
-                # device.write(SIG_DD_R)
-                # device.write(val_dd_r)
-                # time.sleep(.1)
+                device.write(SIG_DD_R)
+                device.write(val_dd_r)
+                time.sleep(.1)
 
                 val_dd_r_prev = val_dd_r
                 val_dd_v_prev = val_dd_v

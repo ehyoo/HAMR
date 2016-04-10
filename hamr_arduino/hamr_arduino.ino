@@ -6,7 +6,6 @@
 #include "constants.h"
 
 
-
 /* -------------------------------------------------------*/
 /* These following values are modifiable through serial communication or determined by a control output */
 int send_data = 0;  // whether the arduino should send data 

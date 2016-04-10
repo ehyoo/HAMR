@@ -9,7 +9,6 @@
 #define DIST_PER_REV          (PI*WHEEL_DIAMETER)  // circumference of wheel in meters
 #define LOOPTIME              20.0 // in ms      
 
-
 // For live-plotting
 /* SIGNALS */
 #define SIG_START_STRING '$'
@@ -19,7 +18,7 @@
 
 #define SIG_HOLO_X 'x'
 #define SIG_HOLO_Y 'y'
-#define SIG_HOLO_T 'a'
+#define SIG_HOLO_R 'a'
 
 #define SIG_DD_V 'd'
 #define SIG_DD_R 'D'

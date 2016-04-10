@@ -47,4 +47,9 @@ void print_calculated_linear();
 
 void print_calculated_angular();
 
+/*********************************
+MISC
+**********************************/
+int is_imu_working();
+
 #endif

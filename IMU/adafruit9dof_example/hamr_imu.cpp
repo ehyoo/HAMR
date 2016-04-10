@@ -67,15 +67,33 @@ float angle_comp = .9; // complementary filter value. increasing it increases we
 /* Prototype functions */
 void calibrate_imu();
 
-void initialize_imu() { 
+/* variable if IMU is working */
+int imu_working;
+
+void initialize_imu() {
+
+  imu_working = 1; 
   
    /* Initialise the sensors */
-  if(!accel.begin()) Serial.println(F("Ooops, no LSM303 detected ... Check your wiring!"));
-  if(!mag.begin()) Serial.println("Ooops, no LSM303 detected ... Check your wiring!");
-  if(!gyro.begin()) Serial.print("Ooops, no L3GD20 detected ... Check your wiring or I2C ADDR!");
-  
+  if(!accel.begin()){
+    Serial.println(F("Ooops, no LSM303 detected ... Check your wiring!"));
+    imu_working = 0;
+  }
+  if(!mag.begin()) {
+    Serial.println("Ooops, no LSM303 detected ... Check your wiring!");
+    imu_working = 0;
+  }
+
+  if(!gyro.begin()){
+    Serial.print("Ooops, no L3GD20 detected ... Check your wiring or I2C ADDR!");
+    imu_working = 0;
+  }
   Serial.println("Beignning IMU calibration.\n");
   calibrate_imu();
+}
+
+int is_imu_working(){
+  return imu_working;
 }
 
 

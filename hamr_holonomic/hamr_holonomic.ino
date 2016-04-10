@@ -133,7 +133,6 @@ void loop() {
       desired_m2_v = (desired_dd_v + (WHEEL_DIST/2.0) * PI/2.0);
     }
 
-
     // HOLONOMIC CONTROL
     int use_holonomic_control = 1;
     // note sensed_m1_v and sensed_m2_v should have no effect atm
@@ -147,12 +146,12 @@ void loop() {
     //M1 is the RIGHT motor and is forward facing caster wheels
     //M2 is left and so on
 
-    Serial.print("the" );
-    Serial.print(hamr_loc.theta);
-    Serial.print(" dm1 ");
-    Serial.print(desired_m1_v);
-    Serial.print(" dm2 ");
-    Serial.println(desired_m2_v);
+    SerialUSB.print("the" );
+    SerialUSB.print(hamr_loc.theta);
+    SerialUSB.print(" dm1 ");
+    SerialUSB.print(desired_m1_v);
+    SerialUSB.print(" dm2 ");
+    SerialUSB.println(desired_m2_v);
 
     // set speeds on motors      
     set_speed(&pid_vars_M1,
@@ -185,9 +184,9 @@ void loop() {
     // if(next_sensor_time < millis()){
     //   compute_imu(SENSOR_LOOPTIME);
     //   // print_raw_imu();
-    //   // Serial.println("");
+    //   // SerialUSB.println("");
     //   hamr_angle = get_current_angle();
-    //   Serial.println(hamr_angle);
+    //   SerialUSB.println(hamr_angle);
     // }
     // next_sensor_time = millis() + SENSOR_LOOPTIME * 1000;
 
@@ -196,12 +195,12 @@ void loop() {
 }
 
 void init_serial(){
-  Serial.begin(250000);
-  Serial.println("Arduino Ready\n"); // needs to be sent to detect that arduino has initialized
-  Serial.setTimeout(0);              // required to speed up serial reading 
+  SerialUSB.begin(250000);
+  SerialUSB.println("Arduino Ready\n"); // needs to be sent to detect that arduino has initialized
+  SerialUSB.setTimeout(0);              // required to speed up serial reading 
 }
 
-/* read a byte from serial. Perform appropriate action based on byte*/
+/* read a byte from SerialUSB. Perform appropriate action based on byte*/
 void read_serial(){
   String str;
   float temp;
@@ -209,9 +208,9 @@ void read_serial(){
   char buffer[1];
 
   buffer[0] = SIG_UNINITIALIZED; 
-  if(Serial.available()){
-    Serial.readBytes(buffer, 1);
-    Serial.print(buffer[0]);
+  if(SerialUSB.available()){
+    SerialUSB.readBytes(buffer, 1);
+    SerialUSB.print(buffer[0]);
 
     switch(buffer[0]){
       case SIG_START_LOG:
@@ -295,9 +294,9 @@ void read_serial(){
         break;
     }
 
-    if(Serial.available()){
-      *sig_var = Serial.readString().toFloat();
-      Serial.print(" "); Serial.print(*sig_var);
+    if(SerialUSB.available()){
+      *sig_var = SerialUSB.readString().toFloat();
+      SerialUSB.print(" "); SerialUSB.print(*sig_var);
     }
   }
 }
@@ -305,13 +304,13 @@ void read_serial(){
 /* send relevant data through serial */
 void send_serial(){
      if(send_data and Serial){
-       Serial.println(SIG_START_STRING);
+       SerialUSB.println(SIG_START_STRING);
        delayMicroseconds(500);
-       Serial.println(millis() - startMilli); // total time
-       Serial.println(sensed_m1_v, 4);
-       Serial.println(sensed_m2_v, 4);
-       Serial.println(desired_dd_v);
-       Serial.println(hamr_loc.w * 180.0 / PI, 4);
+       SerialUSB.println(millis() - startMilli); // total time
+       SerialUSB.println(sensed_m1_v, 4);
+       SerialUSB.println(sensed_m2_v, 4);
+       SerialUSB.println(desired_dd_v);
+       SerialUSB.println(hamr_loc.w * 180.0 / PI, 4);
    }
 }
 
@@ -429,19 +428,19 @@ void init_actuators(){
 }
 
 void print1(){
-  Serial.println(sensed_m3_v, 4);
+  SerialUSB.println(sensed_m3_v, 4);
 
-   Serial.print(sensed_m1_v, 4);
-   Serial.print(" (");
-   Serial.print(PWM_M1);
-   Serial.print("), ");
-   Serial.print(sensed_m2_v, 4);
-   Serial.print(" (");
-   Serial.print(PWM_M2);
-   Serial.print(")\n");
+   SerialUSB.print(sensed_m1_v, 4);
+   SerialUSB.print(" (");
+   SerialUSB.print(PWM_M1);
+   SerialUSB.print("), ");
+   SerialUSB.print(sensed_m2_v, 4);
+   SerialUSB.print(" (");
+   SerialUSB.print(PWM_M2);
+   SerialUSB.print(")\n");
 
-   Serial.print(curr_count_M1);
-   Serial.print(" ");
-   Serial.print(curr_count_M2);
-   Serial.print("\n");
+   SerialUSB.print(curr_count_M1);
+   SerialUSB.print(" ");
+   SerialUSB.print(curr_count_M2);
+   SerialUSB.print("\n");
 }

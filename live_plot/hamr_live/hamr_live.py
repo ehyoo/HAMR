@@ -27,7 +27,7 @@ import joystick
 # Avoid using CTRL + C. 
 
 # IMPORTANT! Ensure these variables correspond to the Arduino
-PORT = 'COM4'
+PORT = 'COM13'
 BAUDRATE = 250000
 
 SIG_STARTING_STRING = '$\n'

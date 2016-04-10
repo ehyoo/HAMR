@@ -17,6 +17,7 @@ void setup() {
   // initialize serial communication
   Serial.begin(250000);
   initialize_imu();
+  Serial.println(is_imu_working());
 }
 
 void loop() {

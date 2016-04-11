@@ -1,8 +1,8 @@
 /*
  * Robot Constants
  */
-#define TICKS_PER_REV_DDRIVE  1632.0  // number of encoder ticks in one full rotation on diff drive motor
-#define TICKS_PER_REV_TURRET  3000.0  // turret motor (250:1 gear ratio * 12)
+#define TICKS_PER_REV_DDRIVE  4096.0  // number of encoder ticks in one full rotation on diff drive motor
+#define TICKS_PER_REV_TURRET  360.0  // turret motor (250:1 gear ratio * 12)
 #define WHEEL_DIAMETER        0.060325 // in meters (2 3/8" diameter)  
 #define WHEEL_RADIUS          (WHEEL_DIAMETER / 2.0)  // wheel radius, in meters
 #define WHEEL_DIST            0.19812 // distance between diff drive wheels, in meters (7.8")
@@ -57,26 +57,39 @@
  * 
  * M1 = Left Differential Drive (ddrive) motor 
  * M2 = Right Differential Drive (ddrive) motor
- * M3 = Turret motor
+ * MT = Turret motor
  **********************************************/
-// DD motor encoders
-#define PIN_M1_ENCODER_OUTA 38
-#define PIN_M1_ENCODER_OUTB 40
-#define PIN_M2_ENCODER_OUTA 32
-#define PIN_M2_ENCODER_OUTB 34
-// Turret motor encoder
-#define PIN_M3_ENCODER_OUTA 30
-#define PIN_M3_ENCODER_OUTB 28
-// DD motor driver
-#define PIN_DD_EN 22
-#define PIN_M1_DRIVER_INA 24
-#define PIN_M1_DRIVER_INB 26
-#define PIN_M1_DRIVER_PWM 3
-#define PIN_M2_DRIVER_INA 48
-#define PIN_M2_DRIVER_INB 50
-#define PIN_M2_DRIVER_PWM 4
-// Turret motor driver
-#define PIN_M3_DRIVER_INA 41
-#define PIN_M3_DRIVER_INB 43
-#define PIN_M3_DRIVER_PWM 2
- 
+/* Motor Driver Pinouts */
+#define M1_PWM_PIN 2
+#define M1_DIR_PIN 43
+#define M1_SLP_PIN 45
+#define M1_FLT_PIN 47
+
+#define M2_PWM_PIN 3
+#define M2_DIR_PIN 49
+#define M2_SLP_PIN 51
+#define M2_FLT_PIN 53
+
+#define MT_PWM_PIN 4
+#define MT_DIR_PIN 37
+#define MT_SLP_PIN 39
+#define MT_FLT_PIN 41
+
+
+/* Decoder Pinouts */
+#define DECODER_CLK_PIN 6
+
+#define M1_DECODER_SEL_PIN 23
+#define M1_DECODER_OE_PIN 25
+#define M1_DECODER_RST_PIN 27
+int[8] M1_ENCODER_D_PINS = {19,18,17,16,15,14,0,1}; // D0-D7 pinouts
+
+#define M2_DECODER_SEL_PIN 26
+#define M2_DECODER_OE_PIN 24
+#define M2_DECODER_RST_PIN 22
+int[8] M2_ENCODER_D_PINS = {5,7,8,9,10,11,12,13}; // D0-D7 pinouts
+
+#define MT_DECODER_SEL_PIN 48
+#define MT_DECODER_OE_PIN 50
+#define MT_DECODER_RST_PIN 52
+int[8] MT_ENCODER_D_PINS = {44,42,40,38,36,34,32,30}; // D0-D7 pinouts

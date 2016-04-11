@@ -8,20 +8,28 @@ import time
 import hamr_serial
 from hamr_constants import *
 
+MODE_DD = 1
+MODE_HOLONOMIC = 2
+MODE_MOTORS = 3 # not implemented
+
 # set precision values for output from joystick
-Y_PRECISION = .1
-X_PRECISION = .1
-THETA_PRECISION = .1
+Y_PRECISION = .01
+X_PRECISION = .01
+THETA_PRECISION = .01
 
 
 THETA_POSITION = 2
 if platform.system() is 'Windows':
     THETA_POSITION = 3
 
+WRITE_DELAY = .03
 
 #update this to the HAMR port
 port = 'COM4'
 baudrate = 250000
+
+# set joystick mode
+mode = MODE_HOLONOMIC
 
 
 def precision(val, prec):
@@ -92,13 +100,13 @@ def initialize_hamr():
 
 
 def read_joystick():
-    global val_dd_v_prev
-    global sig_l_prev
-    global val_dd_r_prev
+    global vertical_prev
+    global horizontal_prev
+    global rotational_prev
 
-    val_dd_v_prev = ""
-    sig_l_prev = ""
-    val_dd_r_prev = ""
+    vertical_prev = ""
+    horizontal_prev = ""
+    rotational_prev = ""
 
     while (True):
         time.sleep(.1)
@@ -111,35 +119,39 @@ def read_joystick():
         send_signal = commands[4] # index finger button. controls signals
 
         # round signals
-        val_dd_v = str(precision(y, Y_PRECISION))
-        sig_l = str(precision(x, X_PRECISION))
-        val_dd_r = str(precision(theta, THETA_PRECISION))
+        horizontal = str(precision(x / 5.0, X_PRECISION))
+        vertical = str(precision(y / 5.0, Y_PRECISION))
+        rotational = str(precision(theta, THETA_PRECISION))
 
         # send data to HAMR
-        if ((val_dd_v != val_dd_v_prev) or (val_dd_r != val_dd_r_prev)) and send_signal:
-        # if equals_float(val_dd_v, val_dd_v_prev) or equals_float(val_dd_r, val_dd_r_prev):
+        # if ((vertical != vertical_prev) or (rotational != rotational_prev)) and send_signal:
+        if send_signal:
             sending = ""
             if device.is_open:
                 sending = "sending:"
 
-                device.write(SIG_DD_V)
-                device.write(val_dd_v)
-                time.sleep(.1)
+                if mode == MODE_DD:
+                    device.write(SIG_DD_V)
+                    device.write(vertical) 
+                    time.sleep(WRITE_DELAY)
 
-                # uncomment this part to send rotation signal
-                device.write(SIG_DD_R)
-                device.write(val_dd_r)
-                time.sleep(.1)
+                    device.write(SIG_DD_R)
+                    device.write(rotational)
+                else:
+                    device.write(SIG_HOLO_X)
+                    device.write(horizontal)
+                    time.sleep(WRITE_DELAY)
 
-                val_dd_r_prev = val_dd_r
-                val_dd_v_prev = val_dd_v
+                    device.write(SIG_HOLO_Y)
+                    device.write(vertical)
+                    time.sleep(WRITE_DELAY)
 
-                # device.write(SIG_L_MOTOR)
-                # device.write(sig_l)
-                # time.sleep(.1)
-                # sig_l_prev = sig_l
+                    # device.write(SIG_HOLO_R)
+                    # device.write(rotational)
 
-            print sending + val_dd_v + ", " + val_dd_r
+            print sending + horizontal + ", " + vertical + ", " + rotational
+        # uncomment below to send signals
+        # print 'joystick:' + horizontal + ", " + vertical + ", " + rotational
 
 
 def main():

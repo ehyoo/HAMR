@@ -27,7 +27,7 @@ import joystick
 # Avoid using CTRL + C. 
 
 # IMPORTANT! Ensure these variables correspond to the Arduino
-PORT = 'COM13'
+PORT = 'COM4'
 BAUDRATE = 250000
 
 SIG_STARTING_STRING = '$\n'
@@ -389,7 +389,8 @@ m_axes[0].set_title('Right Motor Velocity (m/s)')
 m_axes[1].set_title('Left Motor Velocity (m/s)')
 m_axes[2].set_title('Setpoint Velocity (m/s)')
 m_axes[3].set_title('Angular Velocity (deg/s)')
-m_axes[3].set_ylim(-90,90)
+m_axes[3].set_ylim(0,360)
+m_axes[2].set_ylim(0,360)
 
 # Note: to change the y limits of a particular graph, edit the following line
 # m_axes['graph number'].set_ylim(-1.5,1.5)

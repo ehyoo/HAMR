@@ -289,69 +289,91 @@ def write_t_motor(val):
 
 input_motors = [SIG_R_MOTOR, SIG_L_MOTOR, SIG_T_MOTOR]
 input_holonomic = [SIG_HOLO_X, SIG_HOLO_Y, SIG_HOLO_R]
-current_input = input_motors
+input_dd = [SIG_DD_V, SIG_DD_R, b'^'] # the third signal is a placeholder. it should never be used
+current_input = input_holonomic
 
 def write_input_1(val):
+    print current_input[0]
+    print str(val)
     val = precision(val, INPUT_PRECISION)
     device.write(current_input[0])
     device.write(str(val))
 
-def write_input_1(val):
+    
+
+def write_input_2(val):
+    print current_input[1]
+    print str(val)
     val = precision(val, INPUT_PRECISION)
     device.write(current_input[1])
     device.write(str(val))
 
-def write_input_2(val):
+    
+
+def write_input_3(val):
+    print current_input[2]
+    print str(val)
     val = precision(val, INPUT_PRECISION)
     device.write(current_input[2])
     device.write(str(val))
 
+    
+
+
+
 
 # map labels to control signals
-current_mode = 'R Motor'
+current_mode = 'HOLO X'
 P_map = {'R Motor': SIG_R_KP, 'L Motor': SIG_L_KP, 'T Motor': SIG_T_KP, 'HOLO X': SIG_HOLO_X_KP, 'HOLO Y': SIG_HOLO_Y_KP, 'HOLO R': SIG_HOLO_R_KP}
 I_map = {'R Motor': SIG_R_KI, 'L Motor': SIG_L_KI, 'T Motor': SIG_T_KI, 'HOLO X': SIG_HOLO_X_KI, 'HOLO Y': SIG_HOLO_Y_KI, 'HOLO R': SIG_HOLO_R_KI}
 D_map = {'R Motor': SIG_R_KD, 'L Motor': SIG_L_KD, 'T Motor': SIG_T_KD, 'HOLO X': SIG_HOLO_X_KD, 'HOLO Y': SIG_HOLO_Y_KD, 'HOLO R': SIG_HOLO_R_KD}
 
 def write_P(val):
-    # global P_prev
+    # print P_map[current_mode]
+    # print str(val)
+    # print "---------"
+    # print "---------"
     val = precision(val, PID_PRECISION)
-    # if P_prev != val:
     device.write(P_map[current_mode])
     device.write(str(val))
     time.sleep(WRITE_DELAY)
 
+
 def write_I(val):
-    # global I_prev
+    # print I_map[current_mode]
+    # print str(val)
+    # print "---------"
+    # print "---------"
     val = precision(val, PID_PRECISION)
-    # if I_prev != val:    
     device.write(I_map[current_mode])
     device.write(str(val))
     time.sleep(WRITE_DELAY)
-    # I_prev = val
+
 
 def write_D(val):
-    # global D_prev
+    # print D_map[current_mode]
+    # print str(val)
+    # print "---------"
+    # print "---------"
     val = precision(val, PID_PRECISION)
-    # if D_prev != val:
-    print str(val)
     device.write(D_map[current_mode])
     device.write(str(val))
     time.sleep(WRITE_DELAY)
 
+
 def callback_slider_input_1(val):
     if not update_arduino_immediately: return
-    write_r_motor(val)
+    write_input_1(val)
 
 
 def callback_slider_input_2(val):
     if not update_arduino_immediately: return
-    write_l_motor(val)
+    write_input_2(val)
 
 
 def callback_slider_input_3(val):
     if not update_arduino_immediately: return
-    write_t_motor(val)
+    write_input_3(val)
 
 
 # PID SLIDERS
@@ -372,17 +394,24 @@ def callback_slider_D(val):
 # RADIO BUTTONS FOR MODE SELECTION
 def callback_radio_mode(label):
     global current_mode
+    global current_input
     current_mode = label
+
     if 'Motor' in label:
         current_input = input_motors
         slider_input_1.label.set_text('M1 Velocity')
         slider_input_2.label.set_text('M2 Velocity')
         slider_input_3.label.set_text('MT Velocity')
-    elif 'HOLO' in label:
+    elif 'Holo' in label:
         current_input = input_holonomic
         slider_input_1.label.set_text('X dot')
         slider_input_2.label.set_text('Y dot')
         slider_input_3.label.set_text('Theta dot')
+    else:
+        current_input = input_dd
+        slider_input_1.label.set_text('Forward V')
+        slider_input_2.label.set_text('Theta dot')
+        slider_input_3.label.set_text('N/A')
     plt.draw()
 
 
@@ -398,7 +427,7 @@ fig = plt.figure(figsize=(21,8), facecolor='#E1E6E8')
 plt.subplots_adjust(left=.3)
 
 # create NUM_PLOTS subplots in 2 rows
-graph_columns = np.ceil(NUM_PLOTS/2.0)
+graph_columns = np.ceil(NUM_PLOTS/float(GRAPH_ROWS))
 m_axes = [plt.subplot(int(100 * GRAPH_ROWS + 10 * graph_columns + x + 1)) for x in range(NUM_PLOTS)]
 
 xdata = np.zeros(DATA_SIZE)
@@ -412,9 +441,20 @@ for x in range(NUM_PLOTS):
     # m_axes[x].get_xaxis().set_visible(False)
 m_axes[0].set_title('Right Motor Velocity (m/s)')
 m_axes[1].set_title('Left Motor Velocity (m/s)')
-m_axes[2].set_title('Setpoint Velocity (m/s)')
-m_axes[3].set_title('Angular Velocity (deg/s)')
-m_axes[3].set_ylim(-90,90)
+m_axes[2].set_title('Angular Velocity (deg/s)')
+m_axes[2].set_ylim(-200,200)
+
+
+m_axes[3].set_title('holonomic xdot (m/s)')
+m_axes[4].set_title('holonomic ydot (m/s)')
+m_axes[5].set_title('lower base angle (deg)')
+m_axes[5].set_ylim(0,360)
+
+
+m_axes[6].set_title('Input xdot (m/s)')
+m_axes[7].set_title('Input ydot (m/s)')
+m_axes[8].set_title('Input thetadot (deg/s)')
+m_axes[8].set_ylim(-200,200)
 
 # Note: to change the y limits of a particular graph, edit the following line
 # m_axes['graph number'].set_ylim(-1.5,1.5)
@@ -490,7 +530,7 @@ slider_D = MySlider(plt.axes([0.03, 0.6, 0.22, 0.03]), 'D', MIN_D, MAX_D, valini
 slider_D.on_changed(callback_slider_D)
 
 #RADIO BUTTON
-radio_mode = RadioButtons(plt.axes([0.13, 0.3, 0.12, 0.28]), ('HOLO X', 'HOLO Y', 'HOLO R', 'R Motor', 'L Motor', 'T Motor', 'DD V', 'DD R'))
+radio_mode = RadioButtons(plt.axes([0.13, 0.3, 0.12, 0.28]), ('Holo X', 'Holo Y', 'Holo R', 'R Motor', 'L Motor', 'T Motor', 'DD V', 'DD R'))
 radio_mode.on_clicked(callback_radio_mode)
 
 

@@ -1,3 +1,4 @@
+
 """
 This file contains all non critical constants or constants that are not meant to be changed (the SIG consstants).
 """
@@ -29,11 +30,11 @@ PID_PRECISION = .01
 
 # GRAPHING 
 NUM_DATA_POINTS = 5
-NUM_PLOTS = 8
+NUM_PLOTS = 9
 DATA_SIZE = 500
 GRAPH_UPDATE_DELAY = 20
 
-GRAPH_ROWS = 2
+GRAPH_ROWS = 3
 
 
 # SIGNALS

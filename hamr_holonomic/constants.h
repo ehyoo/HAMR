@@ -39,6 +39,18 @@
 #define SIG_T_KI '8'
 #define SIG_T_KD '9'
 
+#define SIG_HOLO_X_KP 'Q'
+#define SIG_HOLO_X_KI 'W'
+#define SIG_HOLO_X_KD 'E'
+
+#define SIG_HOLO_Y_KP 'R'
+#define SIG_HOLO_Y_KI 'T'
+#define SIG_HOLO_Y_KD 'Y'
+
+#define SIG_HOLO_R_KP 'U'
+#define SIG_HOLO_R_KI 'I'
+#define SIG_HOLO_R_KD 'O'
+
 
 /**********************************************
  * Pin Definitions

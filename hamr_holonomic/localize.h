@@ -15,7 +15,7 @@ typedef struct location {
   location() { 
     x = 0.0;
     y = 0.0;
-    theta = 1.57; //note theta is modified here!!
+    theta = 0;
     v = 0.0;
     w = 0.0;
   }
@@ -28,18 +28,20 @@ typedef struct location {
 
     // Calculate velocities
     float ds = v * ts / 1000.0;
-    float dtheta = w * ts / 1000.0;
+    float dtheta = - w * ts / 1000.0;
 
     // Update variables
     float dx = ds * cos(theta);
     float dy = ds * sin(theta);
 
     theta = theta + dtheta;
-//    if (theta > PI) {
-//      theta = theta - PI;
-//    } else if (theta < -PI) {
-//      theta = theta + PI;
-//    }
+
+   if (theta > 2 * PI) {
+     theta -= 2 * PI;
+   }
+   if (theta < 0) {
+     theta += 2 * PI;
+   }
      
     x = x + dx;
     y = y + dy;

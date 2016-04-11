@@ -2,7 +2,7 @@
 #include "motor.h"
 #include "Arduino.h"
 
-#define MAX_ROT_SPEED 270.0
+#define MAX_ROT_SPEED 180.0
 
 void set_direction(int pin_driver_inA, int pin_driver_inB, bool dir) {
   digitalWrite(pin_driver_inA, !dir);
@@ -48,8 +48,8 @@ void set_servo_speed(Servo* motor,
                      float ang_speed_req,
                      float ang_speed_act,
                      float t_elapsed) {
-  float ang_speed = pid->update_pid(ang_speed_req, ang_speed_act, t_elapsed);
-  int pwm_val = round(map(ang_speed, -MAX_ROT_SPEED, MAX_ROT_SPEED, 0, 180));
+  // float ang_speed = pid->update_pid(ang_speed_req, ang_speed_act, t_elapsed);
+  int pwm_val = round(map(ang_speed_req, -MAX_ROT_SPEED, MAX_ROT_SPEED, 0, 180));
   motor->write(pwm_val);
 }
 

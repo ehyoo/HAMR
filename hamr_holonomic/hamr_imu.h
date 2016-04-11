@@ -34,6 +34,8 @@ float get_current_y_velocity();
 
 float get_current_angular_velocity();
 
+float get_angular_velocity_gyro_z();
+
 void get_imu_raw(int* ax_, int* ay_, int* az_, int* gx_, int* gy_, int* gz_, int* mx_, int* my_, int* mz_);
 
 /*********************************
@@ -46,5 +48,10 @@ void print_scaled_imu();
 void print_calculated_linear();
 
 void print_calculated_angular();
+
+/*********************************
+MISC
+**********************************/
+int is_imu_working();
 
 #endif

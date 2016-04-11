@@ -6,20 +6,18 @@
 #include "constants.h"
 #include "holonomic_control.h"
 
-
-
 /* -------------------------------------------------------*/
 /* These following values are modifiable through serial communication or determined by a control output */
 int send_data = 0;  // whether the arduino should send data 
 
 /* DESIRED VALUES */
 // holonomic velocities 
-// float desired_h_x = 0; float desired_h_y = 0; float desired_h_r = 0;
+float desired_h_x = 0; float desired_h_y = 0; float desired_h_r = 0;
 
 // differential drive velocities
 float desired_dd_v = 0.0; // Diff Drive (m/s)
 float desired_dd_r = 0.0; // desired angular velocity for Diff Drive: set between [-1,1] by controller, mapped to [-90,90] degrees in code
-// float speed_req_turret = 0.0; // Turret (deg/s)
+// float speed_req_turret = 0.0; // Turret (rad/s)?
 
 // motor velocities
 float desired_m1_v = 0; float desired_m2_v = 0; float desired_mt_v = 0;
@@ -36,16 +34,13 @@ PID_Vars pid_vars_M1(0.15, 0.0, 0.04);
 PID_Vars pid_vars_M2(0.15, 0.0, 0.04);
 PID_Vars pid_vars_M3(0.01, 0.0, 0.0);
 PID_Vars dd_ctrl(0.1, 0.0, 0.0);
-PID_Vars pid_vars_dd_v(1.0, 0.0, 0.0);
-PID_Vars pid_vars_dd_r(1.0, 0.0, 0.0);
-// PID_Vars pid_vars_h_x(1.0, 0.0, 0.0);
-// PID_Vars pid_vars_h_y(1.0, 0.0, 0.0);
-// PID_Vars pid_vars_h_r(1.0, 0.0, 0.0);
-
+// PID_Vars pid_vars_dd_v(1.0, 0.0, 0.0);
+// PID_Vars pid_vars_dd_r(1.0, 0.0, 0.0);
+PID_Vars pid_vars_h_x(0.1, 0.0, 0.0);
+PID_Vars pid_vars_h_y(0.1, 0.0, 0.0);
+PID_Vars pid_vars_h_r(0.1, 0.0, 0.0);
 /* -------------------------------------------------------*/
 /* -------------------------------------------------------*/
-
-
 
 /* -------------------------------------------------------*/
 /* SENSORS */
@@ -75,8 +70,10 @@ float dtheta_cmd = 0.0;
 
 /* IMU settings */
 const float SENSOR_LOOPTIME = .01;
-long next_sensor_time = millis();
+unsigned long next_sensor_time = millis();
+unsigned long prev_micros = 0;
 float hamr_angle = 0;
+
 /* -------------------------------------------------------*/
 /* -------------------------------------------------------*/
 
@@ -94,113 +91,113 @@ void setup() {
   init_serial();    // initialize serial communication
   init_actuators(); // initialiaze motors and servos
   delay(100);
-  // initialize_imu();
-  //initialize_imu();
+
+  initialize_imu();
   startMilli = millis();
   delay(1000); 
 }
 
-int m1_v = 0;
-int m2_v = 0;
 /*************
  * MAIN LOOP *
  *************/
-void loop() {
+  void loop() {
 
-  if((millis()-lastMilli) >= LOOPTIME) {
-    //serial communication
-    read_serial();
-    send_serial();
-    
-    t_elapsed = (float) (millis() - lastMilli);
-    lastMilli = millis();
-    
-    sense_motors(); // read encoders
+  while(1){
+    // last timing was between 900 and 1200 microseconds. the range seems high...
+    //uncomment the first and last line in while loop to test timing
+    // unsigned long start_time = micros();
 
+    if((millis()-lastMilli) >= LOOPTIME) {
+      //serial communication
+      read_serial();
+      send_serial();
+      
+      t_elapsed = (float) (millis() - lastMilli);
+      lastMilli = millis();
+      
+      sense_motors(); // read encoders
 
-    // DIFFERENTIAL DRIVE CONTROL
-    int use_dd_control = 0;
-    if (use_dd_control == 0) {
-      // PID velocity control, same input to both motors
-      desired_m1_v = desired_dd_v;
-      desired_m2_v = desired_dd_v;
-    } else if (use_dd_control == 1) {
-      // Differential drive control
-      angle_control(&dd_ctrl, desired_dd_r, hamr_loc.w, &dtheta_cmd, desired_dd_v, &desired_m1_v, &desired_m2_v, WHEEL_DIST, WHEEL_RADIUS, t_elapsed);
-    } else {
-      // use indiv setpoints
-      desired_m1_v = (desired_dd_v - (WHEEL_DIST/2.0) * PI/2.0);
-      desired_m2_v = (desired_dd_v + (WHEEL_DIST/2.0) * PI/2.0);
+      // DIFFERENTIAL DRIVE CONTROL
+      int use_dd_control = 0;
+      if (use_dd_control == 0) {
+        // PID velocity control, same input to both motors
+        desired_m1_v = desired_dd_v;
+        desired_m2_v = desired_dd_v;
+      } else if (use_dd_control == 1) {
+        // Differential drive control
+        angle_control(&dd_ctrl, desired_dd_r, hamr_loc.w, &dtheta_cmd, desired_dd_v, &desired_m1_v, &desired_m2_v, WHEEL_DIST, WHEEL_RADIUS, t_elapsed);
+      } else {
+        // use indiv setpoints
+        desired_m1_v = (desired_dd_v - (WHEEL_DIST/2.0) * PI/2.0);
+        desired_m2_v = (desired_dd_v + (WHEEL_DIST/2.0) * PI/2.0);
+      }
+
+      //M1 is the RIGHT motor and is forward facing caster wheels
+      //M2 is LEFT
+
+      // HOLONOMIC CONTROL
+      int use_holonomic_control = 1;
+      if (use_holonomic_control){
+        set_setpoints(desired_h_x, desired_h_y, desired_h_r);
+        update_holonomic_state(hamr_angle, &desired_m1_v, &desired_m2_v, &desired_mt_v);
+      }
+
+      // Serial.print("the" );
+      // Serial.print(hamr_loc.theta);
+      // Serial.print(" dm1 ");
+      // Serial.print(desired_m1_v);
+      // Serial.print(" dm2 ");
+      // Serial.println(desired_m2_v);
+
+      // set speeds on motors      
+      set_speed(&pid_vars_M1,
+                desired_m1_v,
+                sensed_m1_v, 
+                &m1_v_cmd,
+                t_elapsed, 
+                &PWM_M1,
+                PIN_M1_DRIVER_INA, 
+                PIN_M1_DRIVER_INB, 
+                PIN_M1_DRIVER_PWM);
+      set_speed(&pid_vars_M2,
+                desired_m2_v,
+                sensed_m2_v, 
+                &m2_v_cmd,
+                t_elapsed, 
+                &PWM_M2,
+                PIN_M2_DRIVER_INA,
+                PIN_M2_DRIVER_INB,
+                PIN_M2_DRIVER_PWM);
+      set_servo_speed(&M3, &pid_vars_M3, hamr_loc.w * 180 * 0.191, 0, 0);
     }
 
-    // HOLONOMIC CONTROL
-    int use_holonomic_control = 1;
-    // note sensed_m1_v and sensed_m2_v should have no effect atm
-    if (use_holonomic_control){
-      set_setpoints(0, desired_dd_v, 0);
-      update_holonomic_state(sensed_m1_v, sensed_m2_v, -hamr_loc.theta, &desired_m1_v, &desired_m2_v, &desired_mt_v);
-      // desired_m1_v = .3;
-      // desired_m2_v = .6;
+    if(next_sensor_time < millis() && is_imu_working()){
+      unsigned long current_micros = micros();
+
+      compute_imu((current_micros - prev_micros) / 1000000.0); //update imu with time change
+
+      hamr_angle = get_current_angle() * PI / 180;
+
+      next_sensor_time = millis() + SENSOR_LOOPTIME;
+      prev_micros = current_micros;
+
+      // potentially combine hamr_loc.theta with imu angle?
+    } else if(!is_imu_working()) {
+      hamr_angle = hamr_loc.theta;
     }
 
-    //M1 is the RIGHT motor and is forward facing caster wheels
-    //M2 is left and so on
-
-    SerialUSB.print("the" );
-    SerialUSB.print(hamr_loc.theta);
-    SerialUSB.print(" dm1 ");
-    SerialUSB.print(desired_m1_v);
-    SerialUSB.print(" dm2 ");
-    SerialUSB.println(desired_m2_v);
-
-    // set speeds on motors      
-    set_speed(&pid_vars_M1,
-              desired_m1_v,
-              sensed_m1_v, 
-              &m1_v_cmd,
-              t_elapsed, 
-              &PWM_M1,
-              PIN_M1_DRIVER_INA, 
-              PIN_M1_DRIVER_INB, 
-              PIN_M1_DRIVER_PWM);
-    set_speed(&pid_vars_M2,
-              desired_m2_v,
-              sensed_m2_v, 
-              &m2_v_cmd,
-              t_elapsed, 
-              &PWM_M2,
-              PIN_M2_DRIVER_INA, 
-              PIN_M2_DRIVER_INB, 
-              PIN_M2_DRIVER_PWM);
-    //set_servo_speed(&M3,pid_vars_M3, speed_req_turret, speed_act_turret, t_elapsed);
-//
-//    if (hamr_loc.theta > 109.0*PI/180.0) {
-//        analogWrite(PIN_M1_DRIVER_PWM,0);
-//        analogWrite(PIN_M2_DRIVER_PWM,0);
-//    }
-    
-
-    // uncomment this to read IMU
-    // if(next_sensor_time < millis()){
-    //   compute_imu(SENSOR_LOOPTIME);
-    //   // print_raw_imu();
-    //   // SerialUSB.println("");
-    //   hamr_angle = get_current_angle();
-    //   SerialUSB.println(hamr_angle);
-    // }
-    // next_sensor_time = millis() + SENSOR_LOOPTIME * 1000;
-
+    // unsigned long finish_time = micros();
+    // Serial.print("total_time: "); Serial.println(finish_time - start_time);
   }
-
 }
 
 void init_serial(){
-  SerialUSB.begin(250000);
-  SerialUSB.println("Arduino Ready\n"); // needs to be sent to detect that arduino has initialized
-  SerialUSB.setTimeout(0);              // required to speed up serial reading 
+  Serial.begin(250000);
+  Serial.println("Arduino Ready\n"); // needs to be sent to detect that arduino has initialized
+  Serial.setTimeout(0);              // required to speed up serial reading 
 }
 
-/* read a byte from SerialUSB. Perform appropriate action based on byte*/
+/* read a byte from Serial. Perform appropriate action based on byte*/
 void read_serial(){
   String str;
   float temp;
@@ -208,9 +205,9 @@ void read_serial(){
   char buffer[1];
 
   buffer[0] = SIG_UNINITIALIZED; 
-  if(SerialUSB.available()){
-    SerialUSB.readBytes(buffer, 1);
-    SerialUSB.print(buffer[0]);
+  if(Serial.available()){
+    Serial.readBytes(buffer, 1);
+    Serial.print(buffer[0]);
 
     switch(buffer[0]){
       case SIG_START_LOG:
@@ -221,18 +218,20 @@ void read_serial(){
         send_data = 0;
         break;
 
-      // case SIG_HOLO_X:
-      //   sig_var = &desired_dd_v;
-      //   break;
+      // holonomic inputs
+      case SIG_HOLO_X:
+        sig_var = &desired_h_x;
+        break;
 
-      // case SIG_HOLO_Y:
-      //   sig_var = &desired_dd_v;
-      //   break;
+      case SIG_HOLO_Y:
+        sig_var = &desired_h_y;
+        break;
 
-      // case SIG_HOLO_T:
-      //   sig_var = &desired_dd_r;
-      //   break;
+      case SIG_HOLO_R:
+        sig_var = &desired_h_r;
+        break;
 
+      // differential drive inputs
       case SIG_DD_V:
         sig_var = &desired_dd_v;
         break;
@@ -280,7 +279,7 @@ void read_serial(){
         sig_var = &(pid_vars_M2.Kd);
         break;
 
-      // turrent motor PID
+      // turret motor PID
       case SIG_T_KP:
         sig_var = &(dd_ctrl.Kp);
         break;
@@ -292,26 +291,88 @@ void read_serial(){
       case SIG_T_KD:
         sig_var = &(dd_ctrl.Kd);
         break;
+
+      // holonomic X PID
+      case SIG_HOLO_X_KP:
+        sig_var = &(pid_vars_h_x.Kp);
+        break;
+
+      case SIG_HOLO_X_KI:
+        sig_var = &(pid_vars_h_x.Ki);
+        break;
+
+      case SIG_HOLO_X_KD:
+        sig_var = &(pid_vars_h_x.Kd);
+        break;
+
+      // holonomic Y PID
+
+      case SIG_HOLO_Y_KP:
+        sig_var = &(pid_vars_h_y.Kp);
+        break;
+
+      case SIG_HOLO_Y_KI:
+        sig_var = &(pid_vars_h_y.Ki);
+        break;
+
+      case SIG_HOLO_Y_KD:
+        sig_var = &(pid_vars_h_y.Kd);
+        break;
+
+      // holonomic R PID
+
+      case SIG_HOLO_R_KP:
+        sig_var = &(pid_vars_h_r.Kp);
+        break;
+
+      case SIG_HOLO_R_KI:
+        sig_var = &(pid_vars_h_r.Ki);
+        break;
+
+      case SIG_HOLO_R_KD:
+        sig_var = &(pid_vars_h_r.Kd);
+        break;
     }
 
-    if(SerialUSB.available()){
-      *sig_var = SerialUSB.readString().toFloat();
-      SerialUSB.print(" "); SerialUSB.print(*sig_var);
+    if(Serial.available()){
+      *sig_var = Serial.readString().toFloat();
+      Serial.print(" "); Serial.print(*sig_var);
+
+      // uncomment below to test if correct signals are received
+      // Serial.print("signal received:"); Serial.println(buffer[0]);
+      // Serial.print("value received:"); Serial.println(*sig_var);
     }
+
   }
 }
 
-/* send relevant data through serial */
+/* send relevant data through serial 
+Everything in the if statement takes between 1200 and 1300 microseconds
+uncomment first and last line to test timing */
 void send_serial(){
-     if(send_data and Serial){
-       SerialUSB.println(SIG_START_STRING);
+  // unsigned long starttime = micros();
+   if(send_data and Serial){
+       Serial.println(SIG_START_STRING);
        delayMicroseconds(500);
-       SerialUSB.println(millis() - startMilli); // total time
-       SerialUSB.println(sensed_m1_v, 4);
-       SerialUSB.println(sensed_m2_v, 4);
-       SerialUSB.println(desired_dd_v);
-       SerialUSB.println(hamr_loc.w * 180.0 / PI, 4);
+       Serial.println(millis() - startMilli); // total time
+       Serial.println(sensed_m1_v, 3);
+       Serial.println(sensed_m2_v, 3);
+       Serial.println(hamr_angle * 180.0 / PI, 3);
+       // Serial.println(hamr_loc.theta * 180.0 / PI, 2);
+
+       Serial.println(desired_h_x, 3);
+       Serial.println(desired_h_y, 3);
+       Serial.println(hamr_angle * 180.0 / PI, 3);
+
+       Serial.println(desired_h_x, 3);
+       Serial.println(desired_h_y, 3);
+       Serial.println(desired_h_r, 3);
+
+       // Serial.println(desired_dd_v);
+       // Serial.println(desired_dd_r);
    }
+   // unsigned long finishtime = micros();
+  // Serial.print("total_time: "); Serial.println(finishtime - starttime);
 }
 
 void sense_motors(){
@@ -428,19 +489,19 @@ void init_actuators(){
 }
 
 void print1(){
-  SerialUSB.println(sensed_m3_v, 4);
+  Serial.println(sensed_m3_v, 4);
 
-   SerialUSB.print(sensed_m1_v, 4);
-   SerialUSB.print(" (");
-   SerialUSB.print(PWM_M1);
-   SerialUSB.print("), ");
-   SerialUSB.print(sensed_m2_v, 4);
-   SerialUSB.print(" (");
-   SerialUSB.print(PWM_M2);
-   SerialUSB.print(")\n");
+   Serial.print(sensed_m1_v, 4);
+   Serial.print(" (");
+   Serial.print(PWM_M1);
+   Serial.print("), ");
+   Serial.print(sensed_m2_v, 4);
+   Serial.print(" (");
+   Serial.print(PWM_M2);
+   Serial.print(")\n");
 
-   SerialUSB.print(curr_count_M1);
-   SerialUSB.print(" ");
-   SerialUSB.print(curr_count_M2);
-   SerialUSB.print("\n");
+   Serial.print(curr_count_M1);
+   Serial.print(" ");
+   Serial.print(curr_count_M2);
+   Serial.print("\n");
 }

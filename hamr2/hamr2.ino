@@ -101,94 +101,95 @@ void setup() {
  * MAIN LOOP *
  *************/
   void loop() {
+  // uncomment this when not testing
+  test_motors();
 
-  while(1){
-    // last timing was between 900 and 1200 microseconds. the range seems high...
-    //uncomment the first and last line in while loop to test timing
-    // unsigned long start_time = micros();
+  // while(1){
+  //   // last timing was between 900 and 1200 microseconds. the range seems high...
+  //   //uncomment the first and last line in while loop to test timing
+  //   // unsigned long start_time = micros();
 
-    if((millis()-lastMilli) >= LOOPTIME) {
-      //serial communication
-      read_serial();
-      send_serial();
+  //   if((millis()-lastMilli) >= LOOPTIME) {
+  //     //serial communication
+  //     read_serial();
+  //     send_serial();
       
-      t_elapsed = (float) (millis() - lastMilli);
-      lastMilli = millis();
+  //     t_elapsed = (float) (millis() - lastMilli);
+  //     lastMilli = millis();
       
-      sense_motors(); // read encoders
+  //     sense_motors(); // read encoders
 
-      // DIFFERENTIAL DRIVE CONTROL
-      int use_dd_control = 0;
-      if (use_dd_control == 0) {
-        // PID velocity control, same input to both motors
-        desired_m1_v = desired_dd_v;
-        desired_m2_v = desired_dd_v;
-      } else if (use_dd_control == 1) {
-        // Differential drive control
-        angle_control(&dd_ctrl, desired_dd_r, hamr_loc.w, &dtheta_cmd, desired_dd_v, &desired_m1_v, &desired_m2_v, WHEEL_DIST, WHEEL_RADIUS, t_elapsed);
-      } else {
-        // use indiv setpoints
-        desired_m1_v = (desired_dd_v - (WHEEL_DIST/2.0) * PI/2.0);
-        desired_m2_v = (desired_dd_v + (WHEEL_DIST/2.0) * PI/2.0);
-      }
+  //     // DIFFERENTIAL DRIVE CONTROL
+  //     int use_dd_control = 0;
+  //     if (use_dd_control == 0) {
+  //       // PID velocity control, same input to both motors
+  //       desired_m1_v = desired_dd_v;
+  //       desired_m2_v = desired_dd_v;
+  //     } else if (use_dd_control == 1) {
+  //       // Differential drive control
+  //       angle_control(&dd_ctrl, desired_dd_r, hamr_loc.w, &dtheta_cmd, desired_dd_v, &desired_m1_v, &desired_m2_v, WHEEL_DIST, WHEEL_RADIUS, t_elapsed);
+  //     } else {
+  //       // use indiv setpoints
+  //       desired_m1_v = (desired_dd_v - (WHEEL_DIST/2.0) * PI/2.0);
+  //       desired_m2_v = (desired_dd_v + (WHEEL_DIST/2.0) * PI/2.0);
+  //     }
 
-      //M1 is the RIGHT motor and is forward facing caster wheels
-      //M2 is LEFT
+  //     //M1 is the RIGHT motor and is forward facing caster wheels
+  //     //M2 is LEFT
 
-      // HOLONOMIC CONTROL
-      int use_holonomic_control = 1;
-      if (use_holonomic_control){
-        set_setpoints(desired_h_x, desired_h_y, desired_h_r);
-        update_holonomic_state(hamr_angle, &desired_m1_v, &desired_m2_v, &desired_mt_v);
-      }
+  //     // HOLONOMIC CONTROL
+  //     int use_holonomic_control = 1;
+  //     if (use_holonomic_control){
+  //       set_setpoints(desired_h_x, desired_h_y, desired_h_r);
+  //       update_holonomic_state(hamr_angle, &desired_m1_v, &desired_m2_v, &desired_mt_v);
+  //     }
 
-      // Serial.print("the" );
-      // Serial.print(hamr_loc.theta);
-      // Serial.print(" dm1 ");
-      // Serial.print(desired_m1_v);
-      // Serial.print(" dm2 ");
-      // Serial.println(desired_m2_v);
+  //     // Serial.print("the" );
+  //     // Serial.print(hamr_loc.theta);
+  //     // Serial.print(" dm1 ");
+  //     // Serial.print(desired_m1_v);
+  //     // Serial.print(" dm2 ");
+  //     // Serial.println(desired_m2_v);
 
-      // set speeds on motors      
-      set_speed(&pid_vars_M1,
-                desired_m1_v,
-                sensed_m1_v, 
-                &m1_v_cmd,
-                t_elapsed, 
-                &PWM_M1,
-                PIN_M1_DRIVER_INA, 
-                PIN_M1_DRIVER_INB, 
-                PIN_M1_DRIVER_PWM);
-      set_speed(&pid_vars_M2,
-                desired_m2_v,
-                sensed_m2_v, 
-                &m2_v_cmd,
-                t_elapsed, 
-                &PWM_M2,
-                PIN_M2_DRIVER_INA,
-                PIN_M2_DRIVER_INB,
-                PIN_M2_DRIVER_PWM);
-      set_servo_speed(&M3, &pid_vars_M3, hamr_loc.w * 180 * 0.191, 0, 0);
-    }
+  //     // set speeds on motors      
+  //     set_speed(&pid_vars_M1,
+  //               desired_m1_v,
+  //               sensed_m1_v, 
+  //               &m1_v_cmd,
+  //               t_elapsed, 
+  //               &PWM_M1,
+  //               PIN_M1_DRIVER_INA, 
+  //               PIN_M1_DRIVER_PWM);
+  //     set_speed(&pid_vars_M2,
+  //               desired_m2_v,
+  //               sensed_m2_v, 
+  //               &m2_v_cmd,
+  //               t_elapsed, 
+  //               &PWM_M2,
+  //               PIN_M2_DRIVER_INA,
+  //               PIN_M2_DRIVER_INB,
+  //               PIN_M2_DRIVER_PWM);
+  //     set_servo_speed(&M3, &pid_vars_M3, hamr_loc.w * 180 * 0.191, 0, 0);
+  //   }
 
-    if(next_sensor_time < millis() && is_imu_working()){
-      unsigned long current_micros = micros();
+  //   if(next_sensor_time < millis() && is_imu_working()){
+  //     unsigned long current_micros = micros();
 
-      compute_imu((current_micros - prev_micros) / 1000000.0); //update imu with time change
+  //     compute_imu((current_micros - prev_micros) / 1000000.0); //update imu with time change
 
-      hamr_angle = get_current_angle() * PI / 180;
+  //     hamr_angle = get_current_angle() * PI / 180;
 
-      next_sensor_time = millis() + SENSOR_LOOPTIME;
-      prev_micros = current_micros;
+  //     next_sensor_time = millis() + SENSOR_LOOPTIME;
+  //     prev_micros = current_micros;
 
-      // potentially combine hamr_loc.theta with imu angle?
-    } else if(!is_imu_working()) {
-      hamr_angle = hamr_loc.theta;
-    }
+  //     // potentially combine hamr_loc.theta with imu angle?
+  //   } else if(!is_imu_working()) {
+  //     hamr_angle = hamr_loc.theta;
+  //   }
 
-    // unsigned long finish_time = micros();
-    // Serial.print("total_time: "); Serial.println(finish_time - start_time);
-  }
+  //   // unsigned long finish_time = micros();
+  //   // Serial.print("total_time: "); Serial.println(finish_time - start_time);
+  // }
 }
 
 void init_serial(){
@@ -437,4 +438,23 @@ void print1(){
    Serial.print(" ");
    Serial.print(curr_count_M2);
    Serial.print("\n");
+}
+
+
+// Testing functions
+int increment = 1;
+int pwm = 0;
+void test_motors(){
+
+  pwm += increment;
+  if (pwm > 255){
+    increment = -1;
+  } else if (pwm < 0){
+    increment = 1;
+  }
+
+  analogWrite(M1_PWM_PIN, 0);
+  analogWrite(M2_PWM_PIN, 0);
+  analogWrite(MT_PWM_PIN, 0);
+  delay(50);
 }

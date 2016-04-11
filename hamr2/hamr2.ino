@@ -393,99 +393,32 @@ void sense_motors(){
 }
 
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
-/* 
- *  ENCODER COUNTING INTERRUPT ROUTINES
- *  Motor index: 1 (left DD), 2 (right DD), 3 (turret)
- */
-
-void rencoderA_M1()  {
-  int encoderA_pin = PIN_M1_ENCODER_OUTA;
-  int encoderB_pin = PIN_M1_ENCODER_OUTB;
-  // Record rising or falling edge from encoder
-  interrupt_M1_A = digitalRead(encoderA_pin);
-
-  if (interrupt_M1_A != interrupt_M1_B) curr_count_M1--; // encoderA changed before encoderB -> forward
-  else                                  curr_count_M1++; // encoderB changed before encoderA -> reverse
-}
-
-void rencoderB_M1()  {
-  int encoderA_pin = PIN_M1_ENCODER_OUTA;
-  int encoderB_pin = PIN_M1_ENCODER_OUTB;
-  // Record rising or falling edge from encoder
-  interrupt_M1_B = digitalRead(encoderB_pin);
-
-  if (interrupt_M1_A != interrupt_M1_B) curr_count_M1++; // encoderB changed before encoderA -> reverse
-  else                                  curr_count_M1--; // encoderA changed before encoderB -> forward
-}
-
-void rencoderA_M2()  {
-  int encoderA_pin = PIN_M2_ENCODER_OUTA;
-  int encoderB_pin = PIN_M2_ENCODER_OUTB;
-  // Record rising or falling edge from encoder
-  interrupt_M2_A = digitalRead(encoderA_pin);
-
-  //curr_count_M2++;
-  if (interrupt_M2_A != interrupt_M2_B) curr_count_M2--; // encoderA changed before encoderB -> forward
-  else                                  curr_count_M2++; // encoderB changed before encoderA -> reverse
-}
-
-void rencoderB_M2()  {
-  int encoderA_pin = PIN_M2_ENCODER_OUTA;
-  int encoderB_pin = PIN_M2_ENCODER_OUTB;
-  // Record rising or falling edge from encoder
-  interrupt_M2_B = digitalRead(encoderB_pin);
-
-  //curr_count_M2++;
-  if (interrupt_M2_A != interrupt_M2_B) curr_count_M2++; // encoderB changed before encoderA -> reverse
-  else                                  curr_count_M2--; // encoderA changed before encoderB -> forward
-}
-
 
 void init_actuators(){
-    // Set up turret motor
-  init_servo(&M3, PIN_M3_DRIVER_PWM);
 
   // Set DD motor driver pins as outputs
-  pinMode(PIN_DD_EN, OUTPUT);
-  pinMode(PIN_M1_DRIVER_INA, OUTPUT);
-  pinMode(PIN_M1_DRIVER_INB, OUTPUT);  
-  pinMode(PIN_M2_DRIVER_INA, OUTPUT);
-  pinMode(PIN_M2_DRIVER_INB, OUTPUT);
-  // Set turret driver pins as outputs
-  pinMode(PIN_M3_DRIVER_INA, OUTPUT);
-  pinMode(PIN_M3_DRIVER_INB, OUTPUT);
-  // Set encoder pins as inputs
-  pinMode(PIN_M1_ENCODER_OUTA, INPUT);
-  pinMode(PIN_M1_ENCODER_OUTB, INPUT);
-  pinMode(PIN_M2_ENCODER_OUTA, INPUT);
-  pinMode(PIN_M2_ENCODER_OUTB, INPUT);
-  pinMode(PIN_M3_ENCODER_OUTA, INPUT);
-  pinMode(PIN_M3_ENCODER_OUTB, INPUT);
+  pinMode(M1_PWM_PIN, OUTPUT);
+  pinMode(M1_DIR_PIN, OUTPUT);
+  pinMode(M1_SLP_PIN, OUTPUT);
+  pinMode(M1_FLT_PIN, INPUT_PULLUP);
+  pinMode(M2_PWM_PIN, OUTPUT);
+  pinMode(M2_DIR_PIN, OUTPUT);
+  pinMode(M2_SLP_PIN, OUTPUT);
+  pinMode(M2_FLT_PIN, INPUT_PULLUP);
+  pinMode(MT_PWM_PIN, OUTPUT);
+  pinMode(MT_DIR_PIN, OUTPUT);
+  pinMode(MT_SLP_PIN, OUTPUT);
+  pinMode(MT_FLT_PIN, INPUT_PULLUP);
 
-  //set pin no 2 as interrupt pin (INTERRUPT 1) 
-  //digitalWrite(PIN_M1_ENCODER_OUTA, HIGH);                      
-  //digitalWrite(PIN_M1_ENCODER_OUTB, HIGH);
-  attachInterrupt(PIN_M1_ENCODER_OUTA, rencoderA_M1, CHANGE);  
-  attachInterrupt(PIN_M1_ENCODER_OUTB, rencoderB_M1, CHANGE);
-  attachInterrupt(PIN_M2_ENCODER_OUTA, rencoderA_M2, CHANGE);  
-  attachInterrupt(PIN_M2_ENCODER_OUTB, rencoderB_M2, CHANGE);  
-  // attachInterrupt(PIN_M3_ENCODER_OUTA, rencoderA_M3, CHANGE);  
-  // attachInterrupt(PIN_M3_ENCODER_OUTB, rencoderB_M3, CHANGE);  
-
-  digitalWrite(PIN_DD_EN, HIGH);
   // Set Motors as forward
-  digitalWrite(PIN_M1_DRIVER_INA, LOW);
-  digitalWrite(PIN_M1_DRIVER_INB, HIGH);
-  digitalWrite(PIN_M2_DRIVER_INA, LOW);
-  digitalWrite(PIN_M2_DRIVER_INB, HIGH);
-  digitalWrite(PIN_M3_DRIVER_INA, HIGH);
-  digitalWrite(PIN_M3_DRIVER_INB, LOW);
+  digitalWrite(M1_DIR_PIN, LOW);
+  digitalWrite(M2_DIR_PIN, LOW);
+  digitalWrite(MT_DIR_PIN, LOW);
 
   // Initialize PWMs to 0
-  analogWrite(PIN_M1_DRIVER_PWM, 0);
-  analogWrite(PIN_M2_DRIVER_PWM, 0);
-  set_servo_speed(&M3, 0, 0.0, 0.0, 1.0);
+  analogWrite(M1_PWM_PIN, 0);
+  analogWrite(M2_PWM_PIN, 0);
+  analogWrite(MT_PWM_PIN, 0);
 }
 
 void print1(){

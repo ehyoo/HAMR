@@ -82,14 +82,14 @@
 #define M1_DECODER_SEL_PIN 23
 #define M1_DECODER_OE_PIN 25
 #define M1_DECODER_RST_PIN 27
-const int M1_ENCODER_D_PINS[8] = {19,18,17,16,15,14,0,1}; // D0-D7 pinouts
+const int M1_DECODER_D_PINS[8] = {19,18,17,16,15,14,0,1}; // D0-D7 pinouts
 
 #define M2_DECODER_SEL_PIN 26
 #define M2_DECODER_OE_PIN 24
 #define M2_DECODER_RST_PIN 22
-const int M2_ENCODER_D_PINS[8] = {5,7,8,9,10,11,12,13}; // D0-D7 pinouts
+const int M2_DECODER_D_PINS[8] = {5,7,8,9,10,11,12,13}; // D0-D7 pinouts
 
 #define MT_DECODER_SEL_PIN 48
 #define MT_DECODER_OE_PIN 50
 #define MT_DECODER_RST_PIN 52
-const int MT_ENCODER_D_PINS[8] = {44,42,40,38,36,34,32,30}; // D0-D7 pinouts
+const int MT_DECODER_D_PINS[8] = {30,32,34,36,38,40,42,44}; // D0-D7 pinouts

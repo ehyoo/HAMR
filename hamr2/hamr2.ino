@@ -5,6 +5,7 @@
 #include "dd_control.h"
 #include "constants.h"
 #include "holonomic_control.h"
+#include "decoder.h"
 
 /* -------------------------------------------------------*/
 /* These following values are modifiable through serial communication or determined by a control output */
@@ -89,10 +90,10 @@ location hamr_loc;
 
 void setup() {
   init_serial();    // initialize serial communication
-  init_actuators(); // initialiaze motors and servos
+  init_actuators(); // initialiaze motors and servos        REMEMBER TO REENABLE THIS
   delay(100);
 
-  initialize_imu();
+  // initialize_imu();
   startMilli = millis();
   delay(1000); 
 }
@@ -104,7 +105,35 @@ void setup() {
   // uncomment this when not testing
   test_motors();
 
-  while(1){
+  // int count = 0;
+  // pinMode(14, OUTPUT);
+  // pinMode(15, OUTPUT);
+
+  // init_decoders();
+
+  // while(1){
+  //   //generate square wave
+  //   // for(int i = 0; i < 1000; i++){
+  //     digitalWrite(14, HIGH);
+  //     delay(1);
+  //     digitalWrite(15, HIGH);
+  //     delay(1);
+  //     digitalWrite(14, LOW);
+  //     delay(1);
+  //     digitalWrite(15, LOW);
+  //     delay(1);
+  //   // }
+  //   if(count > 1000){
+  //     // Serial.println(read_decoders());
+  //     // test_decoders();
+  //     count = 0;    
+  //   }
+
+  //   // while(1);
+  //   count++;
+  // }
+
+  while(0){
     // last timing was between 900 and 1200 microseconds. the range seems high...
     //uncomment the first and last line in while loop to test timing
     // unsigned long start_time = micros();
@@ -396,23 +425,23 @@ void sense_motors(){
 void init_actuators(){
 
   // Set DD motor driver pins as outputs
-  pinMode(M1_PWM_PIN, OUTPUT);
+  // pinMode(M1_PWM_PIN, OUTPUT);
   pinMode(M1_DIR_PIN, OUTPUT);
-  pinMode(M1_SLP_PIN, OUTPUT);
+  // pinMode(M1_SLP_PIN, OUTPUT); // this should be high
   pinMode(M1_FLT_PIN, INPUT_PULLUP);
-  pinMode(M2_PWM_PIN, OUTPUT);
+  // pinMode(M2_PWM_PIN, OUTPUT);
   pinMode(M2_DIR_PIN, OUTPUT);
-  pinMode(M2_SLP_PIN, OUTPUT);
+  // pinMode(M2_SLP_PIN, OUTPUT);
   pinMode(M2_FLT_PIN, INPUT_PULLUP);
-  pinMode(MT_PWM_PIN, OUTPUT);
+  // pinMode(MT_PWM_PIN, OUTPUT);
   pinMode(MT_DIR_PIN, OUTPUT);
-  pinMode(MT_SLP_PIN, OUTPUT);
+  // pinMode(MT_SLP_PIN, OUTPUT);
   pinMode(MT_FLT_PIN, INPUT_PULLUP);
 
   // Set Motors as forward
-  digitalWrite(M1_DIR_PIN, LOW);
-  digitalWrite(M2_DIR_PIN, LOW);
-  digitalWrite(MT_DIR_PIN, LOW);
+  digitalWrite(M1_DIR_PIN, HIGH);
+  digitalWrite(M2_DIR_PIN, HIGH);
+  digitalWrite(MT_DIR_PIN, HIGH);
 
   // Initialize PWMs to 0
   analogWrite(M1_PWM_PIN, 0);
@@ -438,8 +467,9 @@ void print1(){
    Serial.print("\n");
 }
 
-
-// Testing functions
+/* 
+Testing functions
+*/
 int increment = 1;
 int pwm = 0;
 void test_motors(){
@@ -451,8 +481,114 @@ void test_motors(){
     increment = 1;
   }
 
-  analogWrite(M1_PWM_PIN, 0);
-  analogWrite(M2_PWM_PIN, 0);
-  analogWrite(MT_PWM_PIN, 0);
+  analogWrite(M1_PWM_PIN, pwm);
+  analogWrite(M2_PWM_PIN, pwm);
+  analogWrite(MT_PWM_PIN, pwm);
+  
+  Serial.print("M1_PWM_PIN: "); Serial.println(M1_PWM_PIN);
+  Serial.print("M2_PWM_PIN: "); Serial.println(M2_PWM_PIN);
+  Serial.print("MT_PWM_PIN: "); Serial.println(MT_PWM_PIN);
+  Serial.print("pwm: "); Serial.println(pwm);
   delay(50);
 }
+
+
+
+void init_decoders(){
+
+  uint32_t maxCount = 1000;
+  uint32_t dutyCycleCount = maxCount / 2;
+
+  // enablePWM(6, maxCount, dutyCycleCount);
+
+  pinMode(MT_DECODER_OE_PIN, OUTPUT);
+  pinMode(MT_DECODER_SEL_PIN, OUTPUT);
+  pinMode(MT_DECODER_RST_PIN, OUTPUT);
+
+  // digitalWrite(MT_DECODER_OE_PIN, HIGH);
+  digitalWrite(MT_DECODER_RST_PIN, HIGH);
+  // digitalWrite(MT_DECODER_SEL_PIN, HIGH);
+
+  pinMode(MT_DECODER_D_PINS[0], INPUT);
+  pinMode(MT_DECODER_D_PINS[1], INPUT);
+  pinMode(MT_DECODER_D_PINS[2], INPUT);
+  pinMode(MT_DECODER_D_PINS[3], INPUT);
+  pinMode(MT_DECODER_D_PINS[4], INPUT);
+  pinMode(MT_DECODER_D_PINS[5], INPUT);
+  pinMode(MT_DECODER_D_PINS[6], INPUT);
+  pinMode(MT_DECODER_D_PINS[7], INPUT);
+}
+
+
+void test_decoders(){
+  int i;
+  long int decoder_count = 0;
+
+  //disable tristate buffers
+  // OE - L
+  digitalWrite(MT_DECODER_OE_PIN, LOW);
+
+  // read pins
+  decoder_count = 0;
+
+  // SEL - L
+  digitalWrite(MT_DECODER_SEL_PIN, LOW); //set HIGH byte
+
+  delay(10);
+  for(i = 0; i < 8; i++){
+    Serial.println(MT_DECODER_D_PINS[i]);
+    Serial.println(digitalRead(MT_DECODER_D_PINS[i]));
+    decoder_count |= digitalRead(MT_DECODER_D_PINS[i]) << i;
+  }
+
+  decoder_count = decoder_count << 8;
+
+  // SEL - H
+  digitalWrite(MT_DECODER_SEL_PIN, HIGH); //set LOW byte
+  delay(10);
+  for(i = 0; i < 8; i++){
+    Serial.println(digitalRead(MT_DECODER_D_PINS[i]));
+    decoder_count |= digitalRead(MT_DECODER_D_PINS[i]) << i;
+  } 
+
+  Serial.print("Decoder Count: "); Serial.println(decoder_count);
+
+  //enable tristate buffers
+  // OE - H
+  digitalWrite(MT_DECODER_OE_PIN, HIGH);
+}
+
+// void enablePWM(uint32_t pwmPin, uint32_t maxCount, uint32_t dutyCycleCount){
+//   uint32_t clkAFreq = 42000000ul;
+//   uint32_t pwmFreq = 42000000ul; 
+  
+//   Serial.println("position1");
+
+
+//   pmc_enable_periph_clk(PWM_INTERFACE_ID);
+//   PWMC_ConfigureClocks(clkAFreq, 0, VARIANT_MCK);
+
+//   // return;
+
+ 
+//   PIO_Configure(
+//     g_APinDescription[pwmPin].pPort,
+//     g_APinDescription[pwmPin].ulPinType,
+//     g_APinDescription[pwmPin].ulPin,
+//     g_APinDescription[pwmPin].ulPinConfiguration);
+
+//   Serial.println("position2");
+
+ 
+//   uint32_t channel = g_APinDescription[pwmPin].ulPWMChannel;
+//   PWMC_ConfigureChannel(PWM_INTERFACE, channel , pwmFreq, 0, 0);
+//   PWMC_SetPeriod(PWM_INTERFACE, channel, maxCount);
+//   PWMC_EnableChannel(PWM_INTERFACE, channel);
+//   PWMC_SetDutyCycle(PWM_INTERFACE, channel, dutyCycleCount);
+  
+//   Serial.println("position4");
+
+//   pmc_mck_set_prescaler(2);
+
+//   Serial.println("position5");
+// }

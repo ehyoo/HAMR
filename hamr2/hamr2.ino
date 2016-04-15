@@ -92,6 +92,8 @@ void setup() {
   init_actuators(); // initialiaze motors and servos        REMEMBER TO REENABLE THIS
   delay(100);
 
+  init_decoders();
+
   // initialize_imu();
   startMilli = millis();
   delay(1000); 
@@ -101,30 +103,22 @@ void setup() {
  * MAIN LOOP *
  *************/
 void loop() {
-  // uncomment this when not testing
-//  test_motors();
+  //comment these tests when not testing!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  //  test_motors();
 
-delay(100);
-  Serial.println("Initializing decoders...");
- init_decoders();
-  Serial.println("Generating quad output...");
- //generate square wave
-  for(int i = 0; i < 1000; i++){
-   digitalWrite(12, HIGH);
-   delayMicroseconds(100);
-   digitalWrite(13, HIGH);
-   delayMicroseconds(100);
-   digitalWrite(12, LOW);
-   delayMicroseconds(100);
-   digitalWrite(13, LOW);
-   delayMicroseconds(100);
+  // test decoders 2
+  // digitalWrite(DECODER_SEL_PIN, HIGH);
+  // while(1);
+
+  Serial.println("Begin test_decoders2");
+  while(1){
+    test_decoders3();
   }
-  Serial.println("Reading decoder...");
 
-  int count = read_decoder(3);
-  Serial.println("count: ");
-  Serial.print(count);
-  while(1);
+  // test decoders 1
+  // while(1){
+  //   void test_decoders();
+  // }
 
 
   while(0){
@@ -490,9 +484,6 @@ void test_motors(){
 
 void init_decoders(){
 
-  uint32_t maxCount = 1000;
-  uint32_t dutyCycleCount = maxCount / 2;
-
   // enablePWM(6, maxCount, dutyCycleCount);
   pinMode(DECODER_SEL_PIN, OUTPUT);  
   pinMode(DECODER_OE_PIN, OUTPUT);
@@ -536,10 +527,83 @@ void test_decoders(){
   Serial.println("Done");
 
   int count = read_decoder(2);
+
+  // float encoder_diff = count 
+  // float time_elapsed = 
+  // float velocity = get_speed(encoder_diff, 4096, time_elapsed)
   Serial.println("count: ");
   Serial.print(count);
   while(1);
 
+}
+
+
+int test_previous_decoder_count;
+long test_prev_millis;
+
+void test_decoders2(){
+  int test_current_decoder_count = read_decoder(3); // read decoder
+
+  // get encoder difference
+  int decoder_diff = test_current_decoder_count - test_previous_decoder_count;
+  Serial.print("pre-overflow diff "); Serial.print(decoder_diff);
+  // test for overflow
+  if(abs(decoder_diff) > 32767){
+    if(test_current_decoder_count < 0){
+      decoder_diff = (test_current_decoder_count - test_previous_decoder_count) + 65535 + 1;
+    }
+    else {
+      decoder_diff = (test_current_decoder_count - test_previous_decoder_count) - 65535 - 1;
+    }
+    // decoder_diff = test_current_decoder_count + test_previous_decoder_count; 
+  }
+
+  // measure time difference
+  long test_current_millis = millis();
+  float time_elapsed = test_current_millis - test_prev_millis;
+
+  //compute velocity 
+  // float wheel_diameter = ??????
+  // float dist_per_rev = wheel_diamter * PI;
+  float dist_per_rev = 1;
+  float ticks_per_rev = 4096;
+  float measured_velocity = get_speed((float) decoder_diff, ticks_per_rev, dist_per_rev, time_elapsed);
+
+  Serial.print("velocity: "); Serial.print(measured_velocity);
+
+  Serial.print(" count: "); Serial.print(test_current_decoder_count);
+  Serial.print(" difference: "); Serial.println(decoder_diff);
+  Serial.print(" time elapsed: "); Serial.println(time_elapsed);
+
+  //set previous values
+  test_previous_decoder_count = test_current_decoder_count;
+  test_prev_millis = test_current_millis;
+}
+
+
+int test_previous_decoder_count1 = 0;
+int test_previous_decoder_count2 = 0;
+int test_previous_decoder_count3 = 0;
+void test_decoders3(){
+  int test_current_decoder_count1 = read_decoder(1);
+  int test_current_decoder_count2 = read_decoder(2);
+  int test_current_decoder_count3 = read_decoder(3);
+
+  int decoder_diff1 = test_current_decoder_count1 - test_previous_decoder_count1;
+  int decoder_diff2 = test_current_decoder_count2 - test_previous_decoder_count2;
+  int decoder_diff3 = test_current_decoder_count3 - test_previous_decoder_count3;
+
+  Serial.print(test_current_decoder_count1); Serial.print(" ");
+  Serial.print(test_current_decoder_count2); Serial.print(" ");
+  Serial.print(test_current_decoder_count3); Serial.print(" ");
+
+  Serial.print(decoder_diff1); Serial.print(" ");
+  Serial.print(decoder_diff2); Serial.print(" ");
+  Serial.print(decoder_diff3); Serial.println(" ");
+
+  test_previous_decoder_count1 = test_current_decoder_count1;
+  test_previous_decoder_count2 = test_current_decoder_count2;
+  test_previous_decoder_count3 = test_current_decoder_count3;
 }
 
 // void enablePWM(uint32_t pwmPin, uint32_t maxCount, uint32_t dutyCycleCount){

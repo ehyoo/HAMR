@@ -1,3 +1,6 @@
+#ifndef CONSTANTS_h
+#define CONSTANTS_h
+
 /*
  * Robot Constants
  */
@@ -81,6 +84,8 @@
 #define DECODER_OE_PIN 50
 #define DECODER_RST_PIN 52
 
-int M1_DECODER_D_PINS[8] = {19,18,17,16,15,14,24,22}; // D0-D7 pinouts
-int M2_DECODER_D_PINS[8] = {5,7,8,9,10,11,12,13}; // D0-D7 pinouts
-int MT_DECODER_D_PINS[8] = {44,42,40,38,36,34,32,30}; // D0-D7 pinouts
+const int M1_DECODER_D_PINS[8] = {19,18,17,16,15,14,24,22}; // D0-D7 pinouts
+const int M2_DECODER_D_PINS[8] = {5,7,8,9,10,11,12,13}; // D0-D7 pinouts
+const int MT_DECODER_D_PINS[8] = {44,42,40,38,36,34,32,30}; // D0-D7 pinouts
+
+#endif

@@ -1,7 +1,6 @@
 #ifndef Motor_h
 #define Motor_h
 
-#include <Servo.h>
 #include "pid.h"
 
 #define DIR_FORWARD 1

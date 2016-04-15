@@ -2,10 +2,7 @@
 #include "Arduino.h"
 #include "constants.h"
 
-
-
-
- int read_decoder(int index) {
+ short int read_decoder(int index) {
    const int* d_pins;
    int sel_pin = DECODER_SEL_PIN;
    int oe_pin = DECODER_OE_PIN;
@@ -30,6 +27,8 @@
    // read high byte
    digitalWrite(sel_pin, LOW); 
    delayMicroseconds(10);
+   delayMicroseconds(10000);
+   
    for (int i = 0; i < 8; i++) {
      states[i + 8] = digitalRead(d_pins[i]);
    }
@@ -44,18 +43,20 @@
    digitalWrite(oe_pin, HIGH); // reset inhibit logic
 
 
-   int count = 0;
+   short int count = 0;
    for (int i = 15; i >= 0; i--) {
+    Serial.print(states[i]);
      count = (count << 1) | states[i];
    }
+   Serial.println();
 
-  for (int i = 0; i <= 15; i++){
-    Serial.print(d_pins[i%8]);
-    Serial.print(" ");
-    Serial.print(states[i]);
-    Serial.print("\n");
+  // for (int i = 0; i <= 15; i++){
+  //   Serial.print(d_pins[i%8]);
+  //   Serial.print(" ");
+  //   Serial.print(states[i]);
+  //   Serial.print("\n");
     
-  }
+  // }
   
    return count;
  }

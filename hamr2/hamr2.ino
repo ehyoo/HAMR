@@ -78,7 +78,6 @@ float hamr_angle = 0;
 /* -------------------------------------------------------*/
 /* -------------------------------------------------------*/
 
-Servo M3;
 
 // timing: main loop
 unsigned long startMilli;
@@ -101,37 +100,32 @@ void setup() {
 /*************
  * MAIN LOOP *
  *************/
-  void loop() {
+void loop() {
   // uncomment this when not testing
-  test_motors();
+//  test_motors();
 
-  // int count = 0;
-  // pinMode(14, OUTPUT);
-  // pinMode(15, OUTPUT);
+delay(100);
+  Serial.println("Initializing decoders...");
+ init_decoders();
+  Serial.println("Generating quad output...");
+ //generate square wave
+  for(int i = 0; i < 1000; i++){
+   digitalWrite(12, HIGH);
+   delayMicroseconds(100);
+   digitalWrite(13, HIGH);
+   delayMicroseconds(100);
+   digitalWrite(12, LOW);
+   delayMicroseconds(100);
+   digitalWrite(13, LOW);
+   delayMicroseconds(100);
+  }
+  Serial.println("Reading decoder...");
 
-  // init_decoders();
+  int count = read_decoder(3);
+  Serial.println("count: ");
+  Serial.print(count);
+  while(1);
 
-  // while(1){
-  //   //generate square wave
-  //   // for(int i = 0; i < 1000; i++){
-  //     digitalWrite(14, HIGH);
-  //     delay(1);
-  //     digitalWrite(15, HIGH);
-  //     delay(1);
-  //     digitalWrite(14, LOW);
-  //     delay(1);
-  //     digitalWrite(15, LOW);
-  //     delay(1);
-  //   // }
-  //   if(count > 1000){
-  //     // Serial.println(read_decoders());
-  //     // test_decoders();
-  //     count = 0;    
-  //   }
-
-  //   // while(1);
-  //   count++;
-  // }
 
   while(0){
     // last timing was between 900 and 1200 microseconds. the range seems high...
@@ -500,62 +494,52 @@ void init_decoders(){
   uint32_t dutyCycleCount = maxCount / 2;
 
   // enablePWM(6, maxCount, dutyCycleCount);
+  pinMode(DECODER_SEL_PIN, OUTPUT);  
+  pinMode(DECODER_OE_PIN, OUTPUT);
+  pinMode(DECODER_RST_PIN, OUTPUT);
 
-  pinMode(MT_DECODER_OE_PIN, OUTPUT);
-  pinMode(MT_DECODER_SEL_PIN, OUTPUT);
-  pinMode(MT_DECODER_RST_PIN, OUTPUT);
+  
+  for (int i = 0; i < 8; i++) {
+    pinMode(M1_DECODER_D_PINS[i], INPUT);
+    pinMode(M2_DECODER_D_PINS[i], INPUT);
+    pinMode(MT_DECODER_D_PINS[i], INPUT);
 
-  // digitalWrite(MT_DECODER_OE_PIN, HIGH);
-  digitalWrite(MT_DECODER_RST_PIN, HIGH);
-  // digitalWrite(MT_DECODER_SEL_PIN, HIGH);
+  }
 
-  pinMode(MT_DECODER_D_PINS[0], INPUT);
-  pinMode(MT_DECODER_D_PINS[1], INPUT);
-  pinMode(MT_DECODER_D_PINS[2], INPUT);
-  pinMode(MT_DECODER_D_PINS[3], INPUT);
-  pinMode(MT_DECODER_D_PINS[4], INPUT);
-  pinMode(MT_DECODER_D_PINS[5], INPUT);
-  pinMode(MT_DECODER_D_PINS[6], INPUT);
-  pinMode(MT_DECODER_D_PINS[7], INPUT);
+  // Reset decoder count to 0 at init
+  digitalWrite(DECODER_RST_PIN, LOW);
+  delay(100);
+  digitalWrite(DECODER_RST_PIN, HIGH);
+
+  // reset inhibit logic on decoders
+  digitalWrite(DECODER_OE_PIN, LOW);
 }
 
 
 void test_decoders(){
-  int i;
-  long int decoder_count = 0;
+  Serial.println("Starting...");
 
-  //disable tristate buffers
-  // OE - L
-  digitalWrite(MT_DECODER_OE_PIN, LOW);
+  // Produce quadrature output
+  pinMode(A8,OUTPUT);
+  pinMode(A9,OUTPUT);
 
-  // read pins
-  decoder_count = 0;
-
-  // SEL - L
-  digitalWrite(MT_DECODER_SEL_PIN, LOW); //set HIGH byte
-
-  delay(10);
-  for(i = 0; i < 8; i++){
-    Serial.println(MT_DECODER_D_PINS[i]);
-    Serial.println(digitalRead(MT_DECODER_D_PINS[i]));
-    decoder_count |= digitalRead(MT_DECODER_D_PINS[i]) << i;
+  for (int i = 0; i < 500; i++) {
+    digitalWrite(A8,HIGH);
+    delayMicroseconds(100);
+    digitalWrite(A9,HIGH);
+    delayMicroseconds(100);
+    digitalWrite(A8,LOW);
+    delayMicroseconds(100);
+    digitalWrite(A9,LOW);
+    delayMicroseconds(100);
   }
+  Serial.println("Done");
 
-  decoder_count = decoder_count << 8;
+  int count = read_decoder(2);
+  Serial.println("count: ");
+  Serial.print(count);
+  while(1);
 
-  // SEL - H
-  digitalWrite(MT_DECODER_SEL_PIN, HIGH); //set LOW byte
-  delay(10);
-  for(i = 0; i < 8; i++){
-    Serial.println(digitalRead(MT_DECODER_D_PINS[i]));
-    decoder_count |= digitalRead(MT_DECODER_D_PINS[i]) << i;
-  } 
-
-  Serial.print("Decoder Count: "); Serial.println(decoder_count);
-
-  //enable tristate buffers
-  // OE - H
-  digitalWrite(MT_DECODER_OE_PIN, HIGH);
 }
 
 // void enablePWM(uint32_t pwmPin, uint32_t maxCount, uint32_t dutyCycleCount){

@@ -101,16 +101,16 @@ void loop() {
     select_decoder(0);
     decoder0_count = read_decoder();
     Serial.print("count0: ");
-    Serial.println(decoder0_count,BIN);
+    Serial.print(decoder0_count);
     
     select_decoder(1);
     decoder1_count = read_decoder();
 
 
-    Serial.print("count1: ");
-    Serial.println(decoder1_count,BIN);
+    Serial.print(" count1: ");
+    Serial.println(decoder1_count);
 
-    delayMicroseconds(100000);
+    delayMicroseconds(10000);
   }
 }
 

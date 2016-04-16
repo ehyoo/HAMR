@@ -1,6 +1,9 @@
 #ifndef CONSTANTS_h
 #define CONSTANTS_h
 
+/* interrupt pins */
+#define PIN_MT_ENCODER_A 62
+#define PIN_MT_ENCODER_B 63
 /*
  * Robot Constants
  */

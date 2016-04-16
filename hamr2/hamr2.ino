@@ -7,9 +7,13 @@
 #include "holonomic_control.h"
 #include "decoder.h"
 
+#include <Wire.h>
+
 /* -------------------------------------------------------*/
 /* These following values are modifiable through serial communication or determined by a control output */
-int send_data = 0;  // whether the arduino should send data 
+
+/*this value is updated by the control software. if it is true, the arduino will send data through the send_serial function */
+int send_data = 0; 
 
 /* DESIRED VALUES */
 // holonomic velocities 
@@ -43,41 +47,42 @@ PID_Vars pid_vars_h_r(0.1, 0.0, 0.0);
 /* -------------------------------------------------------*/
 /* -------------------------------------------------------*/
 
-/* -------------------------------------------------------*/
-/* SENSORS */
+/* SENSORS -----------------------------------------------*/
+// decoder counts
+unsigned int decoder_count0 = 0;
+unsigned int decoder_count1 = 0;
+
 // encoders
 // Encoder counting interrupt functions
-void rencoderA_M1(); void rencoderB_M1();
-void rencoderA_M2(); void rencoderB_M2();
-// void rencoderA_M3(); void rencoderB_M3();
+//void rencoderA_M1(); void rencoderB_M1();
+//void rencoderA_M2(); void rencoderB_M2();
+void rencoderA_MT(); void rencoderB_MT();
 
 /* encoder counters */
-volatile long curr_count_M1 = 0; volatile long prev_count_M1 = 0; 
-volatile long curr_count_M2 = 0; volatile long prev_count_M2 = 0; 
-volatile long curr_count_M3 = 0; volatile long prev_count_M3 = 0; 
+//volatile long curr_count_M1 = 0; volatile long prev_count_M1 = 0; 
+//volatile long curr_count_M2 = 0; volatile long prev_count_M2 = 0; 
+volatile long curr_count_MT = 0; volatile long prev_count_MT = 0; 
 
 /* encoder output state */
 int interrupt_M1_A = 0; int interrupt_M1_B = 0;
 int interrupt_M2_A = 0; int interrupt_M2_B = 0;
-int interrupt_M3_A = 0; int interrupt_M3_B = 0;
+int interrupt_MT_A = 0; int interrupt_MT_B = 0;
 
 /* measured velocities */
-float sensed_m1_v = 0.0; 
-float sensed_m2_v = 0.0; 
-float sensed_m3_v = 0.0;   
+float sensed_M1_v = 0.0; 
+float sensed_M2_v = 0.0; 
+float sensed_MT_v = 0.0;   
 
 /* velocity commands */
 float dtheta_cmd = 0.0;
 
 /* IMU settings */
-const float SENSOR_LOOPTIME = .01;
+const float SENSOR_LOOPTIME = .01; //remeber to update this to microseconds later, or an exact timing method if possible
 unsigned long next_sensor_time = millis();
 unsigned long prev_micros = 0;
 float hamr_angle = 0;
-
 /* -------------------------------------------------------*/
 /* -------------------------------------------------------*/
-
 
 // timing: main loop
 unsigned long startMilli;
@@ -88,42 +93,25 @@ float t_elapsed;
 location hamr_loc;
 
 void setup() {
-  init_serial();    // initialize serial communication
-  init_actuators(); // initialiaze motors and servos        REMEMBER TO REENABLE THIS
-  delay(100);
+  init_serial();              // initialize serial communication
+  init_actuators();           // initialiaze all motors
+  init_encoder_interrupts();  // initialize the encoder interrupts
+  init_I2C();                 // initialize I2C bus as master
 
-  init_decoders();
-
-  // initialize_imu();
+  // initialize_imu();          // initialize this after integrating IMU
   startMilli = millis();
-  delay(1000); 
+  delay(1000);             // what is this for???
 }
 
 /*************
  * MAIN LOOP *
  *************/
 void loop() {
-  //comment these tests when not testing!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  //  test_motors();
-
-  // test decoders 2
-  // digitalWrite(DECODER_SEL_PIN, HIGH);
-  // while(1);
-
-  Serial.println("Begin test_decoders2");
-  while(1){
-    test_decoders3();
-  }
-
-  // test decoders 1
-  // while(1){
-  //   void test_decoders();
-  // }
-
+  test();       /////////// TESTING
 
   while(0){
     // last timing was between 900 and 1200 microseconds. the range seems high...
-    //uncomment the first and last line in while loop to test timing
+    // uncomment the first and last line in while loop to test timing
     // unsigned long start_time = micros();
 
     if((millis()-lastMilli) >= LOOPTIME) {
@@ -171,7 +159,7 @@ void loop() {
       // set speeds on motors      
       set_speed(&pid_vars_M1,
                 desired_m1_v,
-                sensed_m1_v, 
+                sensed_M1_v, 
                 &m1_v_cmd,
                 t_elapsed, 
                 &pwm_M1,
@@ -179,7 +167,7 @@ void loop() {
                 M1_PWM_PIN);
       set_speed(&pid_vars_M2,
                 desired_m2_v,
-                sensed_m2_v, 
+                sensed_M2_v, 
                 &m2_v_cmd,
                 t_elapsed, 
                 &pwm_M2,
@@ -371,8 +359,9 @@ void send_serial(){
        Serial.println(SIG_START_STRING);
        delayMicroseconds(500);
        Serial.println(millis() - startMilli); // total time
-       Serial.println(sensed_m1_v, 3);
-       Serial.println(sensed_m2_v, 3);
+       Serial.println(sensed_M1_v, 3);
+       Serial.println(sensed_M2_v, 3);
+//       Serial.println(sensed_MT_v, 3);
        Serial.println(hamr_angle * 180.0 / PI, 3);
        // Serial.println(hamr_loc.theta * 180.0 / PI, 2);
 
@@ -393,19 +382,19 @@ void send_serial(){
 
 void sense_motors(){
   // Count encoder increments since last loop
-  long encoder_counts_M1 = curr_count_M1 - prev_count_M1;
-  long encoder_counts_M2 = curr_count_M2 - prev_count_M2;
-  long encoder_counts_M3 = curr_count_M3 - prev_count_M3;
-  prev_count_M1 = curr_count_M1;
-  prev_count_M2 = curr_count_M2;
-  prev_count_M3 = curr_count_M3;
+//  long encoder_count_change_M1 = curr_count_M1 - prev_count_M1;
+//  long encoder_count_change_M2 = curr_count_M2 - prev_count_M2;
+  long encoder_count_change_MT = curr_count_MT - prev_count_MT;
+//  prev_count_M1 = curr_count_M1;
+//  prev_count_M2 = curr_count_M2;
+  prev_count_MT = curr_count_MT;
 
   // compute speed
-  sensed_m1_v = get_speed(encoder_counts_M1, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
-  sensed_m2_v = get_speed(encoder_counts_M2, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
-  sensed_m3_v = get_ang_speed(encoder_counts_M3, TICKS_PER_REV_TURRET, t_elapsed);         
+//  sensed_M1_v = get_speed(encoder_count_change_M1, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
+//  sensed_M2_v = get_speed(encoder_count_change_M2, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
+  sensed_MT_v = get_ang_speed(encoder_count_change_MT, TICKS_PER_REV_TURRET, t_elapsed);         
   
-  hamr_loc.update(sensed_m1_v, sensed_m2_v, WHEEL_DIST, t_elapsed);
+  hamr_loc.update(sensed_M1_v, sensed_M2_v, WHEEL_DIST, t_elapsed);
 }
 
 
@@ -437,24 +426,6 @@ void init_actuators(){
   analogWrite(MT_PWM_PIN, 0);
 }
 
-void print1(){
-  Serial.println(sensed_m3_v, 4);
-
-   Serial.print(sensed_m1_v, 4);
-   Serial.print(" (");
-   Serial.print(pwm_M1);
-   Serial.print("), ");
-   Serial.print(sensed_m2_v, 4);
-   Serial.print(" (");
-   Serial.print(pwm_M2);
-   Serial.print(")\n");
-
-   Serial.print(curr_count_M1);
-   Serial.print(" ");
-   Serial.print(curr_count_M2);
-   Serial.print("\n");
-}
-
 /* 
 Testing functions
 */
@@ -480,163 +451,65 @@ void test_motors(){
   delay(50);
 }
 
-
-
-void init_decoders(){
-
-  // enablePWM(6, maxCount, dutyCycleCount);
-  pinMode(DECODER_SEL_PIN, OUTPUT);  
-  pinMode(DECODER_OE_PIN, OUTPUT);
-  pinMode(DECODER_RST_PIN, OUTPUT);
-
-  
-  for (int i = 0; i < 8; i++) {
-    pinMode(M1_DECODER_D_PINS[i], INPUT);
-    pinMode(M2_DECODER_D_PINS[i], INPUT);
-    pinMode(MT_DECODER_D_PINS[i], INPUT);
-
-  }
-
-  // Reset decoder count to 0 at init
-  digitalWrite(DECODER_RST_PIN, LOW);
-  delay(100);
-  digitalWrite(DECODER_RST_PIN, HIGH);
-
-  // reset inhibit logic on decoders
-  digitalWrite(DECODER_OE_PIN, LOW);
+void init_I2C(){
+  Wire.begin();
 }
 
-
-void test_decoders(){
-  Serial.println("Starting...");
-
-  // Produce quadrature output
-  pinMode(A8,OUTPUT);
-  pinMode(A9,OUTPUT);
-
-  for (int i = 0; i < 500; i++) {
-    digitalWrite(A8,HIGH);
-    delayMicroseconds(100);
-    digitalWrite(A9,HIGH);
-    delayMicroseconds(100);
-    digitalWrite(A8,LOW);
-    delayMicroseconds(100);
-    digitalWrite(A9,LOW);
-    delayMicroseconds(100);
-  }
-  Serial.println("Done");
-
-  int count = read_decoder(2);
-
-  // float encoder_diff = count 
-  // float time_elapsed = 
-  // float velocity = get_speed(encoder_diff, 4096, time_elapsed)
-  Serial.println("count: ");
-  Serial.print(count);
-  while(1);
-
-}
-
-
-int test_previous_decoder_count;
-long test_prev_millis;
-
-void test_decoders2(){
-  int test_current_decoder_count = read_decoder(3); // read decoder
-
-  // get encoder difference
-  int decoder_diff = test_current_decoder_count - test_previous_decoder_count;
-  Serial.print("pre-overflow diff "); Serial.print(decoder_diff);
-  // test for overflow
-  if(abs(decoder_diff) > 32767){
-    if(test_current_decoder_count < 0){
-      decoder_diff = (test_current_decoder_count - test_previous_decoder_count) + 65535 + 1;
-    }
-    else {
-      decoder_diff = (test_current_decoder_count - test_previous_decoder_count) - 65535 - 1;
-    }
-    // decoder_diff = test_current_decoder_count + test_previous_decoder_count; 
-  }
-
-  // measure time difference
-  long test_current_millis = millis();
-  float time_elapsed = test_current_millis - test_prev_millis;
-
-  //compute velocity 
-  // float wheel_diameter = ??????
-  // float dist_per_rev = wheel_diamter * PI;
-  float dist_per_rev = 1;
-  float ticks_per_rev = 4096;
-  float measured_velocity = get_speed((float) decoder_diff, ticks_per_rev, dist_per_rev, time_elapsed);
-
-  Serial.print("velocity: "); Serial.print(measured_velocity);
-
-  Serial.print(" count: "); Serial.print(test_current_decoder_count);
-  Serial.print(" difference: "); Serial.println(decoder_diff);
-  Serial.print(" time elapsed: "); Serial.println(time_elapsed);
-
-  //set previous values
-  test_previous_decoder_count = test_current_decoder_count;
-  test_prev_millis = test_current_millis;
-}
-
-
-int test_previous_decoder_count1 = 0;
-int test_previous_decoder_count2 = 0;
-int test_previous_decoder_count3 = 0;
-void test_decoders3(){
-  int test_current_decoder_count1 = read_decoder(1);
-  int test_current_decoder_count2 = read_decoder(2);
-  int test_current_decoder_count3 = read_decoder(3);
-
-  int decoder_diff1 = test_current_decoder_count1 - test_previous_decoder_count1;
-  int decoder_diff2 = test_current_decoder_count2 - test_previous_decoder_count2;
-  int decoder_diff3 = test_current_decoder_count3 - test_previous_decoder_count3;
-
-  Serial.print(test_current_decoder_count1); Serial.print(" ");
-  Serial.print(test_current_decoder_count2); Serial.print(" ");
-  Serial.print(test_current_decoder_count3); Serial.print(" ");
-
-  Serial.print(decoder_diff1); Serial.print(" ");
-  Serial.print(decoder_diff2); Serial.print(" ");
-  Serial.print(decoder_diff3); Serial.println(" ");
-
-  test_previous_decoder_count1 = test_current_decoder_count1;
-  test_previous_decoder_count2 = test_current_decoder_count2;
-  test_previous_decoder_count3 = test_current_decoder_count3;
-}
-
-// void enablePWM(uint32_t pwmPin, uint32_t maxCount, uint32_t dutyCycleCount){
-//   uint32_t clkAFreq = 42000000ul;
-//   uint32_t pwmFreq = 42000000ul; 
-  
-//   Serial.println("position1");
-
-
-//   pmc_enable_periph_clk(PWM_INTERFACE_ID);
-//   PWMC_ConfigureClocks(clkAFreq, 0, VARIANT_MCK);
-
-//   // return;
-
+void request_decoder_count(char slave_addr){
+  Wire.beginTransmission(slave_addr);
+  int bytes_available = Wire.requestFrom(slave_addr, (uint8_t) 4);
  
-//   PIO_Configure(
-//     g_APinDescription[pwmPin].pPort,
-//     g_APinDescription[pwmPin].ulPinType,
-//     g_APinDescription[pwmPin].ulPin,
-//     g_APinDescription[pwmPin].ulPinConfiguration);
+  if(bytes_available == 4)
+  {
+    decoder_count0 = Wire.read() << 8 | Wire.read();
+    decoder_count1 = Wire.read() << 8 | Wire.read();
 
-//   Serial.println("position2");
-
+    Serial.print("count0: "); Serial.print(decoder_count0);
+    Serial.print(" count1: "); Serial.println(decoder_count1);
+  }
+  else
+  {
+    Serial.print("Unexpected number of bytes received: ");
+  }
  
-//   uint32_t channel = g_APinDescription[pwmPin].ulPWMChannel;
-//   PWMC_ConfigureChannel(PWM_INTERFACE, channel , pwmFreq, 0, 0);
-//   PWMC_SetPeriod(PWM_INTERFACE, channel, maxCount);
-//   PWMC_EnableChannel(PWM_INTERFACE, channel);
-//   PWMC_SetDutyCycle(PWM_INTERFACE, channel, dutyCycleCount);
-  
-//   Serial.println("position4");
+  Wire.endTransmission();
+}
 
-//   pmc_mck_set_prescaler(2);
 
-//   Serial.println("position5");
-// }
+void test_I2C_decoder_count(){
+  request_decoder_count(99);
+  delayMicroseconds(10000);
+}
+
+/* initialize encoder interrupts for turret motor */
+void init_encoder_interrupts(){
+  pinMode(PIN_MT_ENCODER_A, INPUT);
+  pinMode(PIN_MT_ENCODER_B, INPUT);
+
+  attachInterrupt(PIN_MT_ENCODER_A, rencoderA_MT, CHANGE);  
+  attachInterrupt(PIN_MT_ENCODER_B, rencoderB_MT, CHANGE);
+}
+
+// encoder interrupts handlers
+void rencoderA_MT()  {
+  interrupt_MT_A = (PIOB->PIO_PDSR >> 17) & 1;
+  if (interrupt_MT_A != interrupt_MT_B) curr_count_MT--; // encoderA changed before encoderB -> forward
+  else                                  curr_count_MT++; // encoderB changed before encoderA -> reverse
+}
+
+void rencoderB_MT()  {
+  interrupt_MT_B = (PIOB->PIO_PDSR >> 18) & 1;
+  if (interrupt_MT_A != interrupt_MT_B) curr_count_MT++; // encoderB changed before encoderA -> reverse
+  else                                  curr_count_MT--; // encoderA changed before encoderB -> forward
+}
+
+/* TEST FUNCTION. INSERT ALL TESTING IN HERE. make sure to comment these out while not testing, otherwise infinite loop */
+void test(){
+//  while(1){
+//     test_motors(); 
+//  }
+
+  while(1){
+    test_I2C_decoder_count();
+  }
+}

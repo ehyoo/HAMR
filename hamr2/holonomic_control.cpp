@@ -11,13 +11,11 @@
 float max_linear_acceleration = .1;
 float max_angular_acceleration = .1;
 
-
 // desired user velocities
 float setpoint_x = 0;  float setpoint_y = 0;  float setpoint_r = 0; 
 
-
 /* last known state (updated by update_holonomic_state()) */
-float state_xdot = 0; float state_ydot = 0; float state_t = 0;
+float state_xdot = 0; float state_ydot = 0; float state_theta_d = 0; //theta_d is the angle of the drive relative to turret
 
 /*
 Actual velocities input into Jacobian. 
@@ -34,15 +32,15 @@ float output_m1 = 0; float output_m2 = 0; float output_mt = 0;
 Update holonomic actuator velocities with given current known state. 
 Return the computed output in the output pointers
 */
-void update_holonomic_state(float _state_t, float* _output_m1, float* _output_m2, float* _output_mt){
-	state_t = _state_t;
+void get_holonomic_motor_velocities(float _state_theta_dheta_d, float* _output_m1, float* _output_m2, float* _output_mt){
+	state_theta_d = _state_theta_dheta_d;
 
 	input_x = setpoint_x;
 	input_y = setpoint_y;
 	input_r = setpoint_r;
 
 	// compute jacobian based on input velocities. store outputs in the ouput_* variables
-	compute_ramsis_jacobian(input_x, input_y, input_r, state_t);
+	compute_ramsis_jacobian(input_x, input_y, input_r, state_theta_d);
 
 	//compte_ramsis-jacobian updates the output variables
 	* _output_m1 = output_m1;
@@ -94,7 +92,7 @@ void compute_ramsis_jacobian(float xdot, float ydot, float tdot, float t){
 	output_mt = (-xdot * cost - ydot * sint) / DIM_B - tdot;
 }
 
-void set_setpoints(float xdot, float ydot, float rdot){
+void set_holonomic_desired_velocities(float xdot, float ydot, float rdot){
 	setpoint_x = xdot;
 	setpoint_y = ydot;
 	setpoint_r = rdot;

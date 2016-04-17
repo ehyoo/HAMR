@@ -5,15 +5,15 @@
 #define PIN_MT_ENCODER_A 62
 #define PIN_MT_ENCODER_B 63
 /*
- * Robot Constants
+ * Robot Constants. MODIFY THESE TO REFLECT NEW ROBOT
  */
-#define TICKS_PER_REV_DDRIVE  4096.0  // number of encoder ticks in one full rotation on diff drive motor
-#define TICKS_PER_REV_TURRET  360.0  // turret motor (250:1 gear ratio * 12)
-#define WHEEL_DIAMETER        0.060325 // in meters (2 3/8" diameter)  
+#define TICKS_PER_REV_DDRIVE  4096.0                  // number of encoder ticks in one full rotation on diff drive motor
+#define TICKS_PER_REV_TURRET  360.0 * 16 * 9.5        // DOUBLE CHECK THIS
+#define WHEEL_DIAMETER        0.127                   // in meters (5" diameter)  
 #define WHEEL_RADIUS          (WHEEL_DIAMETER / 2.0)  // wheel radius, in meters
-#define WHEEL_DIST            0.19812 // distance between diff drive wheels, in meters (7.8")
-#define DIST_PER_REV          (PI*WHEEL_DIAMETER)  // circumference of wheel in meters
-#define LOOPTIME              20.0 // in ms      
+#define WHEEL_DIST            0.19812                 // distance between diff drive wheels, in meters (7.8")
+#define DIST_PER_REV          (PI*WHEEL_DIAMETER)     // circumference of wheel in meters
+#define LOOPTIME              20.0 // in ms
 
 // For live-plotting
 /* SIGNALS */

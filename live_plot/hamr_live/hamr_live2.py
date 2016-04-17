@@ -27,7 +27,7 @@ import joystick
 # Avoid using CTRL + C. 
 
 # IMPORTANT! Ensure these variables correspond to the Arduino
-PORT = 'COM4'
+PORT = 'COM3'
 BAUDRATE = 250000
 
 SIG_STARTING_STRING = '$\n'
@@ -294,6 +294,7 @@ current_input = input_holonomic
 
 def write_input_1(val):
     print current_input[0]
+    if(current_mode = )
     print str(val)
     val = precision(val, INPUT_PRECISION)
     device.write(current_input[0])

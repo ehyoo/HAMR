@@ -15,7 +15,7 @@ MODE_MOTORS = 3 # not implemented
 # set precision values for output from joystick
 Y_PRECISION = .01
 X_PRECISION = .01
-THETA_PRECISION = .01
+THETA_PRECISION = .01<
 
 
 THETA_POSITION = 2
@@ -25,11 +25,12 @@ if platform.system() is 'Windows':
 WRITE_DELAY = .03
 
 #update this to the HAMR port
-port = 'COM4'
+# port = 'COM3'
+port = 'COM12'
 baudrate = 250000
 
 # set joystick mode
-mode = MODE_HOLONOMIC
+mode = MODE_MOTORS
 
 
 def precision(val, prec):
@@ -123,6 +124,10 @@ def read_joystick():
         vertical = str(precision(y / 5.0, Y_PRECISION))
         rotational = str(precision(theta, THETA_PRECISION))
 
+        vertical_M1_pwm = str(int(50 * y))
+        vertical_M2_pwm = str(int(50 * y))
+        rotational_MT_pwm = str(int(-50 * y))
+
         # send data to HAMR
         # if ((vertical != vertical_prev) or (rotational != rotational_prev)) and send_signal:
         if send_signal:
@@ -137,7 +142,7 @@ def read_joystick():
 
                     device.write(SIG_DD_R)
                     device.write(rotational)
-                else:
+                elif mode == MODE_HOLONOMIC:
                     device.write(SIG_HOLO_X)
                     device.write(horizontal)
                     time.sleep(WRITE_DELAY)
@@ -146,11 +151,28 @@ def read_joystick():
                     device.write(vertical)
                     time.sleep(WRITE_DELAY)
 
+                else:
+                    device.write(SIG_R_MOTOR)
+                    device.write(vertical_M1_pwm)
+                    time.sleep(.01)
+
+                    # device.write(SIG_L_MOTOR)
+                    # device.write(vertical_M2_pwm)
+                    # time.sleep(.01)
+
+                    # device.write(SIG_T_MOTOR)
+                    # device.write(rotational_MT_pwm)
+                    # time.sleep(.01)
+
                     # device.write(SIG_HOLO_R)
                     # device.write(rotational)
 
-            print sending + horizontal + ", " + vertical + ", " + rotational
-        # uncomment below to send signals
+            # if mode == MODE_MOTORS:
+            #     print sending + vertical_M1_pwm + ", " + vertical_M2_pwm + ", " + rotational_MT_pwm
+            # else: 
+            #     print sending + horizontal + ", " + vertical + ", " + rotational
+
+        # uncomment below to show signals
         # print 'joystick:' + horizontal + ", " + vertical + ", " + rotational
 
 

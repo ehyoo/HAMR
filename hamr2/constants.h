@@ -2,8 +2,8 @@
 #define CONSTANTS_h
 
 
-#define M1_FORWARD 0
-#define M2_FORWARD 1
+#define M1_FORWARD 1
+#define M2_FORWARD 0
 #define MT_COUNTER 0
 /* interrupt pins */
 #define PIN_MT_ENCODER_A 62

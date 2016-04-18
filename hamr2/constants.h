@@ -1,6 +1,10 @@
 #ifndef CONSTANTS_h
 #define CONSTANTS_h
 
+
+#define M1_FORWARD 0
+#define M2_FORWARD 1
+#define MT_COUNTER 0
 /* interrupt pins */
 #define PIN_MT_ENCODER_A 62
 #define PIN_MT_ENCODER_B 63
@@ -8,10 +12,10 @@
  * Robot Constants. MODIFY THESE TO REFLECT NEW ROBOT
  */
 #define TICKS_PER_REV_DDRIVE  4096.0                  // number of encoder ticks in one full rotation on diff drive motor
-#define TICKS_PER_REV_TURRET  360.0 * 16 * 9.5        // DOUBLE CHECK THIS
-#define WHEEL_DIAMETER        0.127                   // in meters (5" diameter)  
+#define TICKS_PER_REV_TURRET  360.0 * 16.0 * 9.867    // 
+#define WHEEL_DIAMETER        0.12319                 // in meters (4.8" diameter)  
 #define WHEEL_RADIUS          (WHEEL_DIAMETER / 2.0)  // wheel radius, in meters
-#define WHEEL_DIST            0.19812                 // distance between diff drive wheels, in meters (7.8")
+#define WHEEL_DIST            0.328168                // distance between diff drive wheels, in meters (12.92")
 #define DIST_PER_REV          (PI*WHEEL_DIAMETER)     // circumference of wheel in meters
 #define LOOPTIME              20.0 // in ms
 
@@ -66,26 +70,26 @@
  * MT = Turret motor
  **********************************************/
 /* Motor Driver Pinouts */
-#define M1_PWM_PIN 2
-#define M1_DIR_PIN 43
-#define M1_SLP_PIN 45
-#define M1_FLT_PIN 47
+#define M1_PWM_PIN 8
+#define M1_DIR_PIN 9
+// #define M1_SLP_PIN 45
+// #define M1_FLT_PIN 47
 
-#define M2_PWM_PIN 3
-#define M2_DIR_PIN 49
-#define M2_SLP_PIN 51
-#define M2_FLT_PIN 53
+#define M2_PWM_PIN 10
+#define M2_DIR_PIN 11
+// #define M2_SLP_PIN 51
+// #define M2_FLT_PIN 53
 
-#define MT_PWM_PIN 4
-#define MT_DIR_PIN 37
-#define MT_SLP_PIN 39
-#define MT_FLT_PIN 41
+#define MT_PWM_PIN 2
+#define MT_DIR_PIN 3
+// #define MT_SLP_PIN 39
+// #define MT_FLT_PIN 41
 
 
 /* Decoder Pinouts */
-#define DECODER_SEL_PIN 48
-#define DECODER_OE_PIN 50
-#define DECODER_RST_PIN 52
+// #define DECODER_SEL_PIN 48
+// #define DECODER_OE_PIN 50
+// #define DECODER_RST_PIN 52
 
 const int M1_DECODER_D_PINS[8] = {19,18,17,16,15,14,24,22}; // D0-D7 pinouts
 const int M2_DECODER_D_PINS[8] = {5,7,8,9,10,11,12,13}; // D0-D7 pinouts

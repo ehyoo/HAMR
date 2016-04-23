@@ -59,6 +59,13 @@ int decoder_count_M1 = 0;
 int decoder_count_M2 = 0;
 int decoder_count_MT = 0;
 
+const int AVG_FILT_SZ = 5;
+float decoder_count_arr_M1[AVG_FILT_SZ];
+float decoder_count_arr_M2[AVG_FILT_SZ];
+float decoder_count_arr_MT[AVG_FILT_SZ];
+
+
+
 int decoder_count_M1_prev = 0;
 int decoder_count_M2_prev = 0;
 int decoder_count_MT_prev = 0;
@@ -67,12 +74,12 @@ int decoder_count_MT_prev = 0;
 // Encoder counting interrupt functions
 //void rencoderA_M1(); void rencoderB_M1();
 //void rencoderA_M2(); void rencoderB_M2();
-void rencoderA_MT(); void rencoderB_MT();
+//void rencoderA_MT(); void rencoderB_MT();
 
 /* encoder counters */
 //volatile long curr_count_M1 = 0; volatile long prev_count_M1 = 0; 
 //volatile long curr_count_M2 = 0; volatile long prev_count_M2 = 0; 
-volatile long curr_count_MT = 0; volatile long prev_count_MT = 0; 
+//volatile long curr_count_MT = 0; volatile long prev_count_MT = 0; 
 
 /* encoder output state */
 int interrupt_M1_A = 0; int interrupt_M1_B = 0;
@@ -113,6 +120,12 @@ void setup() {
   init_I2C();                 // initialize I2C bus as master
   init_decoders();
   enable_decoder_clk();
+
+  for (int i = 0; i < AVG_FILT_SZ; i++) {
+    decoder_count_arr_M1[i] = 0.0;
+    decoder_count_arr_M2[i] = 0.0;
+    decoder_count_arr_MT[i] = 0.0;
+  }
 
   // initialize_imu();          // initialize this after integrating IMU
   startMilli = millis(); //startMicro = micros()
@@ -496,6 +509,13 @@ void init_actuators(){
   analogWrite(MT_PWM_PIN, 0);
 }
 
+float compute_avg(float* arr, int sz) {
+  float sum = 0;
+  for (int i = 0; i < sz; i++) {
+    sum += arr[i];
+  }
+  return sum / (float) sz;
+}
 
 void compute_sensed_motor_velocities(){
   // Count encoder increments since last loop
@@ -523,26 +543,28 @@ void compute_sensed_motor_velocities(){
   float decoder_count_change_M2 = decoder_count_M2 - decoder_count_M2_prev;
   float decoder_count_change_MT = decoder_count_MT - decoder_count_MT_prev;
 
-//  Serial.println(decoder_count_change_M1);
-//  Serial.println(decoder_count_change_M2);
-//  Serial.println(decoder_count_change_MT);
-//  Serial.println();
-//  if(abs(decoder_count_change_M1) > 32767){
-//    if(decoder_count_change_M1 < 0) {
-//      decoder_count_change_M1 = (decoder_count_M1 - decoder_count_M1_prev) + 65535 + 1;
-//    } else {
-//      decoder_count_change_M1 = (decoder_count_M1 - decoder_count_M1_prev) - 65535 - 1;
-//    }
-//  }
-  
+
   decoder_count_M1_prev = decoder_count_M1;
   decoder_count_M2_prev = decoder_count_M2;
   decoder_count_MT_prev = decoder_count_MT;
 
+  // Moving average filter on decoder count differences
+  for (int i = 1; i < AVG_FILT_SZ; i++) {
+    decoder_count_arr_M1[i] = decoder_count_arr_M1[i-1];
+    decoder_count_arr_M2[i] = decoder_count_arr_M2[i-1];
+    decoder_count_arr_MT[i] = decoder_count_arr_MT[i-1];
+  }
+  decoder_count_arr_M1[0] = decoder_count_change_M1;
+  decoder_count_arr_M2[0] = decoder_count_change_M2;
+  decoder_count_arr_MT[0] = decoder_count_change_MT;
+  float decoder_count_change_filt_M1 = compute_avg(decoder_count_arr_M1, AVG_FILT_SZ);
+  float decoder_count_change_filt_M2 = compute_avg(decoder_count_arr_M2, AVG_FILT_SZ);
+  float decoder_count_change_filt_MT = compute_avg(decoder_count_arr_MT, AVG_FILT_SZ);
+
   // compute robot velocities
-  sensed_M1_v = get_speed(decoder_count_change_M1, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
-  sensed_M2_v = get_speed(decoder_count_change_M2, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
-  sensed_MT_v = get_ang_speed(decoder_count_change_MT, TICKS_PER_REV_TURRET, t_elapsed);
+  sensed_M1_v = get_speed(decoder_count_change_filt_M1, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
+  sensed_M2_v = get_speed(decoder_count_change_filt_M2, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
+  sensed_MT_v = get_ang_speed(decoder_count_change_filt_MT, TICKS_PER_REV_TURRET, t_elapsed);
 
   hamr_loc.update(sensed_M1_v, sensed_M2_v, WHEEL_DIST, t_elapsed);
 }

@@ -36,8 +36,8 @@ float M2_v_cmd = 0;
 float MT_v_cmd = 0;
 
 /* CONTROL PARAMETERS */
-PID_Vars pid_vars_M1(0.0, 0.0, 0.00);
-PID_Vars pid_vars_M2(0.0, 0.0, 0.00);
+PID_Vars pid_vars_M1(0.18, 0.0, 0.0002);
+PID_Vars pid_vars_M2(0.18, 0.0, 0.0002);
 PID_Vars pid_vars_MT(0.0, 0.0, 0.0);
 PID_Vars dd_ctrl(0.1, 0.0, 0.0);
 
@@ -168,12 +168,12 @@ void loop() {
       /* *********************** */
       /* BEGIN HOLONOMIC CONTROL */
       // compute xdot, ydot, and theta dot using the sensed motor velocties and drive angle
-      compute_global_state(sensed_M1_v, sensed_M2_v, sensed_MT_v, sensed_drive_angle,
-                           &computed_xdot, &computed_ydot, &computed_tdot);
-
-      h_xdot_cmd = desired_h_xdot;
-      h_ydot_cmd = desired_h_ydot;
-      h_rdot_cmd = desired_h_rdot;
+//      compute_global_state(sensed_M1_v, sensed_M2_v, sensed_MT_v, sensed_drive_angle,
+//                           &computed_xdot, &computed_ydot, &computed_tdot);
+//
+//      h_xdot_cmd = desired_h_xdot;
+//      h_ydot_cmd = desired_h_ydot;
+//      h_rdot_cmd = desired_h_rdot;
 
       // UNCOMMENT THE FOLLOWING LINE TO ENABLE HOLONOMIC PID
       // holonomic PID
@@ -438,17 +438,22 @@ void send_serial(){
        Serial.println(millis() - startMilli); // total time
        Serial.println(sensed_M1_v, 3);
        Serial.println(sensed_M2_v, 3);
-       Serial.println(sensed_MT_v, 3);
-       Serial.println(sensed_drive_angle * 180.0 / PI, 3);
-       // Serial.println(hamr_loc.theta * 180.0 / PI, 2);
+      // added for tuning 
+      Serial.println(desired_M1_v, 3);
+      Serial.println(desired_M2_v, 3);
 
-       Serial.println(desired_h_xdot, 3);
-       Serial.println(desired_h_ydot, 3);
-       Serial.println(sensed_drive_angle * 180.0 / PI, 3);
-
-       Serial.println(desired_h_xdot, 3);
-       Serial.println(desired_h_ydot, 3);
-       Serial.println(desired_h_rdot, 3);
+       
+//       Serial.println(sensed_MT_v, 3);
+//       Serial.println(sensed_drive_angle * 180.0 / PI, 3);
+//       // Serial.println(hamr_loc.theta * 180.0 / PI, 2);
+//
+//       Serial.println(desired_h_xdot, 3);
+//       Serial.println(desired_h_ydot, 3);
+//       Serial.println(sensed_drive_angle * 180.0 / PI, 3);
+//
+//       Serial.println(desired_h_xdot, 3);
+//       Serial.println(desired_h_ydot, 3);
+//       Serial.println(desired_h_rdot, 3);
 
        // Serial.println(desired_dd_v);
        // Serial.println(desired_dd_r);
@@ -518,10 +523,10 @@ void compute_sensed_motor_velocities(){
   float decoder_count_change_M2 = decoder_count_M2 - decoder_count_M2_prev;
   float decoder_count_change_MT = decoder_count_MT - decoder_count_MT_prev;
 
-  Serial.println(decoder_count_change_M1);
-  Serial.println(decoder_count_change_M2);
-  Serial.println(decoder_count_change_MT);
-  Serial.println();
+//  Serial.println(decoder_count_change_M1);
+//  Serial.println(decoder_count_change_M2);
+//  Serial.println(decoder_count_change_MT);
+//  Serial.println();
 //  if(abs(decoder_count_change_M1) > 32767){
 //    if(decoder_count_change_M1 < 0) {
 //      decoder_count_change_M1 = (decoder_count_M1 - decoder_count_M1_prev) + 65535 + 1;

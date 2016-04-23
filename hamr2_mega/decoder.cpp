@@ -74,5 +74,8 @@ unsigned int read_decoder(int index){
   return ~((highbyte << 8) | lowbyte);
 }
 
+float low_pass(float current, float filtered_prev, float alpha){
+  return alpha * filtered_prev + (1 - alpha) * current;
+}
 
 

@@ -92,22 +92,61 @@ void setup() {
   init_actuators(); // initialiaze motors and servos
   delay(100);
 
-  initialize_imu();
+//  initialize_imu();
   startMilli = millis();
-  delay(1000); 
+  delay(1000);
 }
 
+
+int turret_offset = 0;
 /*************
  * MAIN LOOP *
  *************/
   void loop() {
 
+
+  analogWrite(PIN_M1_DRIVER_PWM, 100);
+  analogWrite(PIN_M2_DRIVER_PWM, 100);
   while(1){
+//    if(millis() > 2000 && millis() < startMilli + 5000){
+//      desired_h_x = .2;
+//      turret_offset = 5;
+//    } else if(millis() < startMilli + 8000){
+//      desired_h_x = 0;
+//      desired_h_y = -.2;
+//      turret_offset = 5;
+//    } else if(millis() < startMilli + 11000){
+//      desired_h_x = -.2;
+//      desired_h_y = 0;
+//      turret_offset = 2;
+//    } else if(millis() < startMilli + 14000){
+//      desired_h_x = 0;
+//      desired_h_y = .2;
+//    } else {
+//      turret_offset = 2;
+//      desired_h_x = 0;
+//      desired_h_y = 0;
+//    }
+      //if(millis() > startMilli + 13000)
     // last timing was between 900 and 1200 microseconds. the range seems high...
     //uncomment the first and last line in while loop to test timing
     // unsigned long start_time = micros();
 
     if((millis()-lastMilli) >= LOOPTIME) {
+      lastMilli = millis();
+      
+      // Serial.print("M1: "); Serial.print(curr_count_M1 - prev_count_M1);
+      
+      int count1 = curr_count_M1 - prev_count_M1;
+      int count2 = curr_count_M2 - prev_count_M2;
+      Serial.print(" M1: "); Serial.println(count1);
+      Serial.print(" M2: "); Serial.println(count2);
+      prev_count_M1 = curr_count_M1;
+      prev_count_M2 = curr_count_M2;
+
+      lastMilli = millis();
+        
+      continue;
       //serial communication
       read_serial();
       send_serial();
@@ -141,7 +180,7 @@ void setup() {
         set_setpoints(desired_h_x, desired_h_y, desired_h_r);
         update_holonomic_state(hamr_angle, &desired_m1_v, &desired_m2_v, &desired_mt_v);
       }
-
+      
       // Serial.print("the" );
       // Serial.print(hamr_loc.theta);
       // Serial.print(" dm1 ");
@@ -168,10 +207,11 @@ void setup() {
                 PIN_M2_DRIVER_INA,
                 PIN_M2_DRIVER_INB,
                 PIN_M2_DRIVER_PWM);
-      set_servo_speed(&M3, &pid_vars_M3, hamr_loc.w * 180 * 0.191, 0, 0);
+      set_servo_speed(&M3, &pid_vars_M3, hamr_loc.w * 180 * 0.191 + turret_offset, 0, 0);
     }
 
-    if(next_sensor_time < millis() && is_imu_working()){
+    if(0){
+    // if(next_sensor_time < millis() && is_imu_working()){
       unsigned long current_micros = micros();
 
       compute_imu((current_micros - prev_micros) / 1000000.0); //update imu with time change
@@ -182,7 +222,7 @@ void setup() {
       prev_micros = current_micros;
 
       // potentially combine hamr_loc.theta with imu angle?
-    } else if(!is_imu_working()) {
+    } else {
       hamr_angle = hamr_loc.theta;
     }
 

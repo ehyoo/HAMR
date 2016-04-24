@@ -89,7 +89,7 @@ void compute_ramsis_jacobian(float xdot, float ydot, float tdot, float t){
 	// jacobian
 	output_m1 = (xdot*(-b_s - a_c) + ydot*(b_c - a_s)) / (DIM_R*DIM_B);
 	output_m2 = (xdot*(-b_s + a_c) + ydot*(b_c + a_s)) / (DIM_R*DIM_B);
-	output_mt = (-xdot * cost - ydot * sint) / DIM_B - tdot;
+	output_mt = 6.09443943346 * (-xdot * cost - ydot * sint) / DIM_B - tdot;
 }
 
 void set_holonomic_desired_velocities(float xdot, float ydot, float rdot){

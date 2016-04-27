@@ -140,8 +140,44 @@ void setup() {
   }
 
   // initialize_imu();          // initialize this after integrating IMU
+
+  delay(2500);
   startMilli = millis(); //startMicro = micros()
-  //  analogWrite(10, 50);
+}
+
+/*SQUARE VIDEO TEST*/
+void square_vid_test() {
+    if(millis() < startMilli + 4000){
+      desired_h_xdot = -.2;
+      desired_h_ydot = 0;
+    } else if(millis() < startMilli + 4000){
+      desired_h_xdot = 0;
+      desired_h_ydot = -.2;
+    } else if(millis() < startMilli + 6000){
+      desired_h_xdot = .2;
+      desired_h_ydot = 0;
+    } else if(millis() < startMilli + 8000){
+      desired_h_xdot = 0;
+      desired_h_ydot = .2;
+    } else {
+      desired_h_xdot = 0;
+      desired_h_ydot = 0;
+    }
+}
+
+/*RIGHT ANGLE VIDEO TEST*/
+void right_angle_vid_test() {
+    if(millis() < startMilli + 6000){
+      desired_h_xdot = 0;
+      desired_h_ydot = .2;
+    } else if(millis() < startMilli + 12000){
+      desired_h_xdot = -.2;
+      desired_h_ydot = 0;
+    } else {
+      desired_h_xdot = 0;
+      desired_h_ydot = 0;
+    }
+
 }
 
 /***************************/
@@ -156,21 +192,9 @@ void loop() {
     // uncomment the first and last line in while loop to test timing
     // unsigned long start_time = micros();
 
-    if(millis() > 2000 && millis() < startMilli + 5000){
-      desired_h_xdot = .2;
-    } else if(millis() < startMilli + 8000){
-      desired_h_xdot = 0;
-      desired_h_ydot = -.2;
-    } else if(millis() < startMilli + 11000){
-      desired_h_xdot = -.2;
-      desired_h_ydot = 0;
-    } else if(millis() < startMilli + 14000){
-      desired_h_xdot = 0;
-      desired_h_ydot = .2;
-    } else {
-      desired_h_xdot = 0;
-      desired_h_ydot = 0;
-    }
+
+    //square_vid_test();
+    //right_angle_vid_test();
 
     if ((millis() - lastMilli) >= LOOPTIME) { //micros() - lastMicro()
       //serial communication

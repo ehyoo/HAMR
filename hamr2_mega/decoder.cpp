@@ -74,4 +74,3 @@ unsigned int read_decoder(int index){
   return ~((highbyte << 8) | lowbyte);
 }
 
-

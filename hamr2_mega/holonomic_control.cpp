@@ -3,6 +3,10 @@
 #include "Arduino.h"
 
 //remember to define these correctly
+// #define DIM_A 1
+// #define DIM_B 1
+// #define DIM_R 1
+
 #define DIM_A 1
 #define DIM_B 1
 #define DIM_R 1

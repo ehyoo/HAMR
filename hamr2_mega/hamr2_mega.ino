@@ -59,6 +59,11 @@ int decoder_count_M1 = 0;
 int decoder_count_M2 = 0;
 int decoder_count_MT = 0;
 
+const int AVG_FILT_SZ = 5;
+float decoder_count_arr_M1[AVG_FILT_SZ];
+float decoder_count_arr_M2[AVG_FILT_SZ];
+float decoder_count_arr_MT[AVG_FILT_SZ];
+
 int decoder_count_M1_prev = 0;
 int decoder_count_M2_prev = 0;
 int decoder_count_MT_prev = 0;
@@ -69,12 +74,16 @@ long decoder_turret_total = 0;
 // Encoder counting interrupt functions
 //void rencoderA_M1(); void rencoderB_M1();
 //void rencoderA_M2(); void rencoderB_M2();
-void rencoderA_MT(); void rencoderB_MT();
+//void rencoderA_MT(); void rencoderB_MT();
 
 /* encoder counters */
+
 //volatile long curr_count_M1 = 0; volatile long prev_count_M1 = 0;
 //volatile long curr_count_M2 = 0; volatile long prev_count_M2 = 0;
 volatile long curr_count_MT = 0; volatile long prev_count_MT = 0;
+//volatile long curr_count_M1 = 0; volatile long prev_count_M1 = 0;
+//volatile long curr_count_M2 = 0; volatile long prev_count_M2 = 0;
+//volatile long curr_count_MT = 0; volatile long prev_count_MT = 0;
 
 /* encoder output state */
 int interrupt_M1_A = 0; int interrupt_M1_B = 0;
@@ -124,6 +133,12 @@ void setup() {
   init_decoders();
   enable_decoder_clk();
 
+  for (int i = 0; i < AVG_FILT_SZ; i++) {
+    decoder_count_arr_M1[i] = 0.0;
+    decoder_count_arr_M2[i] = 0.0;
+    decoder_count_arr_MT[i] = 0.0;
+  }
+
   // initialize_imu();          // initialize this after integrating IMU
   startMilli = millis(); //startMicro = micros()
   //  analogWrite(10, 50);
@@ -140,6 +155,22 @@ void loop() {
     // last timing was between 900 and 1200 microseconds. the range seems high...
     // uncomment the first and last line in while loop to test timing
     // unsigned long start_time = micros();
+
+    if(millis() > 2000 && millis() < startMilli + 5000){
+      desired_h_xdot = .2;
+    } else if(millis() < startMilli + 8000){
+      desired_h_xdot = 0;
+      desired_h_ydot = -.2;
+    } else if(millis() < startMilli + 11000){
+      desired_h_xdot = -.2;
+      desired_h_ydot = 0;
+    } else if(millis() < startMilli + 14000){
+      desired_h_xdot = 0;
+      desired_h_ydot = .2;
+    } else {
+      desired_h_xdot = 0;
+      desired_h_ydot = 0;
+    }
 
     if ((millis() - lastMilli) >= LOOPTIME) { //micros() - lastMicro()
       //serial communication
@@ -178,8 +209,8 @@ void loop() {
       /* *********************** */
       /* BEGIN HOLONOMIC CONTROL */
       // compute xdot, ydot, and theta dot using the sensed motor velocties and drive angle
-           compute_global_state(sensed_M1_v, sensed_M2_v, sensed_MT_v, sensed_drive_angle,
-                                &computed_xdot, &computed_ydot, &computed_tdot);
+      compute_global_state(sensed_M1_v, sensed_M2_v, sensed_MT_v, sensed_drive_angle,
+                           &computed_xdot, &computed_ydot, &computed_tdot);
       //
       h_xdot_cmd = desired_h_xdot;
       h_ydot_cmd = desired_h_ydot;
@@ -189,35 +220,31 @@ void loop() {
       // holonomic PID
       // h_xdot_cmd += pid_vars_h_xdot->update_pid(desired_h_xdot, computed_xdot, t_elapsed);
       // h_ydot_cmd += pid_vars_h_ydot->update_pid(desired_h_ydot, computed ydot, t_elapsed);
-      // h_rdot_cmd += pid_vars_h_rdot->update_pid(desired_h_rdot, computed_tdot, t_elapsed);
-
-
-      h_rdot_cmd += pid_vars_h_rdot.update_pid(desired_h_rdot, computed_tdot * 180.0 / PI, t_elapsed);
-      Serial.print(desired_h_rdot);
-      Serial.print("  ");
-      Serial.println(computed_tdot);
-
+      // h_rdot_cmd += pid_vars_h_rdot->update_pid(desired_h_rdot, computed_tdot * 180 / PI, t_elapsed);
 
       // using output of holonomic PID, compute jacobian values for motor inputs
-      set_holonomic_desired_velocities(h_xdot_cmd, h_ydot_cmd, h_rdot_cmd); // set these setpoints to the output of the holonomic PID controllers
-      // get_holonomic_motor_velocities(sensed_drive_angle, &desired_M1_v, &desired_M2_v, &desired_MT_v);
-      get_holonomic_motor_velocities(hamr_loc.theta, &desired_M1_v, &desired_M2_v, &desired_MT_v);
-      
-      // Serial.println(desired_MT_v);
-      desired_MT_v = desired_MT_v * 180.0 / PI;
+            set_holonomic_desired_velocities(h_xdot_cmd, h_ydot_cmd, h_rdot_cmd); // set these setpoints to the output of the holonomic PID controllers
+            get_holonomic_motor_velocities(sensed_drive_angle, &desired_M1_v, &desired_M2_v, &desired_MT_v);
+            get_holonomic_motor_velocities(hamr_loc.theta, &desired_M1_v, &desired_M2_v, &desired_MT_v);
+      //
+      // Serial.print(hamr_loc.w);  Serial.print(" ");
+      // Serial.println(computed_tdot);
+      // Serial.println(computed_tdot - sensed_MT_v);
 
-      // desired_MT_v is  
+      // Serial.print(desired_MT_v); Serial.print(" ");
+      // desired_MT_v = -(hamr_loc.w + h_rdot_cmd);
+      // Serial.println(desired_MT_v);
+
+      // Serial.println(desired_MT_v);
+
+      // Serial.println(desired_M1_v);
+             desired_MT_v *= 180.0 / PI;
+
+      // desired_MT_v is
 
       // Serial.println(desired_MT_v);
       /* END HOLONOMIC CONDTROL */
       /* ********************** */
-
-
-//      sensed_M1_v_filt = low_pass(sensed_M1_v, sensed_M1_v_prev, .3);
-//      sensed_M2_v_filt = low_pass(sensed_M2_v, sensed_M2_v_prev, .3);
-      //      sensed_M1_v_filt
-      // set speeds on motors
-
 
       // Serial.println(desired_MT_v);
       set_speed(&pid_vars_M1,
@@ -228,7 +255,7 @@ void loop() {
                 &pwm_M1,
                 M1_DIR_PIN,
                 M1_PWM_PIN);
- 
+
       set_speed(&pid_vars_M2,
                 desired_M2_v,
                 sensed_M2_v,
@@ -247,6 +274,9 @@ void loop() {
                 MT_DIR_PIN,
                 MT_PWM_PIN);
     }
+
+    // Serial.print(desired_MT_v); Serial.print(" sensed ");
+    // Serial.println(sensed_MT_v); Serial.println(decoder_count_MT);
 
 
     // update_prevs();
@@ -267,7 +297,7 @@ void loop() {
     }
 
     long ticks = TICKS_PER_REV_TURRET;
-    sensed_drive_angle = (decoder_turret_total % ticks) / (float) ticks * 2.0 * PI;
+    sensed_drive_angle = (decoder_turret_total % ticks) / (float) ticks;
     // Serial.println(sensed_drive_angle);
 
     // unsigned long finish_time = micros();
@@ -278,7 +308,6 @@ void loop() {
 /***************************/
 /* END MAIN LOOP
   /***************************/
-
 
 /******************************************/
 /* BEGIN SERIAL COMMUNCIATION CODE
@@ -457,26 +486,27 @@ void send_serial() {
     Serial.println(SIG_START_STRING);
     delayMicroseconds(500);
     Serial.println(millis() - startMilli); // total time
-    Serial.println(sensed_M1_v, 3);
-    Serial.println(sensed_M2_v, 3);
-    Serial.println(sensed_MT_v, 3);
-    // added for tuning
+
+
+    Serial.println(desired_h_xdot, 3);
+    Serial.println(desired_h_ydot, 3);
+    Serial.println(desired_h_rdot, 3);
+
+    Serial.println(computed_xdot, 3);
+    Serial.println(computed_ydot, 3);
+    Serial.println(computed_tdot, 3);
+
     Serial.println(desired_M1_v, 3);
     Serial.println(desired_M2_v, 3);
     Serial.println(desired_MT_v, 3);
 
+    Serial.println(sensed_M1_v, 3);
+    Serial.println(sensed_M2_v, 3);
+    Serial.println(sensed_MT_v, 3);
 
-    //       Serial.println(sensed_MT_v, 3);
-    //       Serial.println(sensed_drive_angle * 180.0 / PI, 3);
-    //       // Serial.println(hamr_loc.theta * 180.0 / PI, 2);
-    //
-    //       Serial.println(desired_h_xdot, 3);
-    //       Serial.println(desired_h_ydot, 3);
-    //       Serial.println(sensed_drive_angle * 180.0 / PI, 3);
-    //
-    //       Serial.println(desired_h_xdot, 3);
-    //       Serial.println(desired_h_ydot, 3);
-    //       Serial.println(desired_h_rdot, 3);
+    Serial.println(hamr_loc.theta);
+    Serial.println(hamr_loc.w);
+    Serial.println(sensed_drive_angle);
 
     // Serial.println(desired_dd_v);
     // Serial.println(desired_dd_r);
@@ -495,18 +525,9 @@ void send_serial() {
   /******************************************/
 void init_actuators() {
   // Set DD motor driver pins as outputs
-  // pinMode(M1_PWM_PIN, OUTPUT);
   pinMode(M1_DIR_PIN, OUTPUT);
-  // pinMode(M1_SLP_PIN, OUTPUT); // this should be high
-  // pinMode(M1_FLT_PIN, INPUT_PULLUP);
-  // pinMode(M2_PWM_PIN, OUTPUT);
   pinMode(M2_DIR_PIN, OUTPUT);
-  // pinMode(M2_SLP_PIN, OUTPUT);
-  // pinMode(M2_FLT_PIN, INPUT_PULLUP);
-  // pinMode(MT_PWM_PIN, OUTPUT);
   pinMode(MT_DIR_PIN, OUTPUT);
-  // pinMode(MT_SLP_PIN, OUTPUT);
-  // pinMode(MT_FLT_PIN, INPUT_PULLUP);
 
   // Set Motors as forward
   digitalWrite(M1_DIR_PIN, M1_FORWARD); // LOW is forwards
@@ -519,6 +540,13 @@ void init_actuators() {
   analogWrite(MT_PWM_PIN, 0);
 }
 
+float compute_avg(float* arr, int sz) {
+  float sum = 0;
+  for (int i = 0; i < sz; i++) {
+    sum += arr[i];
+  }
+  return sum / (float) sz;
+}
 
 void compute_sensed_motor_velocities() {
   // Count encoder increments since last loop
@@ -540,6 +568,7 @@ void compute_sensed_motor_velocities() {
   decoder_count_M2 = read_decoder(1);
   decoder_count_MT = read_decoder(2);
 
+  Serial.println(decoder_count_MT);
   // get change in decoder counts
   float decoder_count_change_M1 = decoder_count_M1 - decoder_count_M1_prev;
   float decoder_count_change_M2 = decoder_count_M2 - decoder_count_M2_prev;
@@ -563,10 +592,23 @@ void compute_sensed_motor_velocities() {
   decoder_count_M2_prev = decoder_count_M2;
   decoder_count_MT_prev = decoder_count_MT;
 
+  // Moving average filter on decoder count differences
+  for (int i = 1; i < AVG_FILT_SZ; i++) {
+    decoder_count_arr_M1[i] = decoder_count_arr_M1[i - 1];
+    decoder_count_arr_M2[i] = decoder_count_arr_M2[i - 1];
+    decoder_count_arr_MT[i] = decoder_count_arr_MT[i - 1];
+  }
+  decoder_count_arr_M1[0] = decoder_count_change_M1;
+  decoder_count_arr_M2[0] = decoder_count_change_M2;
+  decoder_count_arr_MT[0] = decoder_count_change_MT;
+  float decoder_count_change_filt_M1 = compute_avg(decoder_count_arr_M1, AVG_FILT_SZ);
+  float decoder_count_change_filt_M2 = compute_avg(decoder_count_arr_M2, AVG_FILT_SZ);
+  float decoder_count_change_filt_MT = compute_avg(decoder_count_arr_MT, AVG_FILT_SZ);
+
   // compute robot velocities
-  sensed_M1_v = get_speed(decoder_count_change_M1, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
-  sensed_M2_v = get_speed(decoder_count_change_M2, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
-  sensed_MT_v = get_ang_speed(decoder_count_change_MT, TICKS_PER_REV_TURRET, t_elapsed);
+  sensed_M1_v = get_speed(decoder_count_change_filt_M1, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
+  sensed_M2_v = get_speed(decoder_count_change_filt_M2, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
+  sensed_MT_v = get_ang_speed(decoder_count_change_filt_MT, TICKS_PER_REV_TURRET, t_elapsed);
 
   // Serial.print("sensed: "); Serial.print(sensed_MT_v);
   // Serial.print(" desired: "); Serial.println(desired_MT_v);

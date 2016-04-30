@@ -1,0 +1,1 @@
+Use the modified Adafruit libraries in the libraries folder

@@ -4,20 +4,18 @@
 
 #define MAX_ROT_SPEED 180.0
 
-void set_direction(int pin_driver_inA, int pin_driver_inB, bool dir) {
-  digitalWrite(pin_driver_inA, !dir);
-  digitalWrite(pin_driver_inB, dir);
+void set_direction(int pin_driver_dir, bool dir) {
+  digitalWrite(pin_driver_dir, dir);
 }
 
 // Sets direction and Arduino PWM to desired speed
-void set_speed(PID_Vars* pid, 
+void set_speed(PID_Vars* pid,
                float speed_req, 
                float speed_act,
                float* speed_cmd,
                float t_elapsed,
                int* pwm_val,
-               int pin_driver_inA, 
-               int pin_driver_inB, 
+               int pin_driver_dir, 
                int pin_pwm) {
 
   // increment speed_cmd with PID output (velocity control outputs change in speed)
@@ -30,27 +28,13 @@ void set_speed(PID_Vars* pid,
 
   if (*pwm_val < 0) {
     // reverse direction
-    set_direction(pin_driver_inA, pin_driver_inB, DIR_BACKWARD);
+    set_direction(pin_driver_dir, DIR_BACKWARD);
   } else {
     // forward direction
-    set_direction(pin_driver_inA, pin_driver_inB, DIR_FORWARD);
+    set_direction(pin_driver_dir, DIR_FORWARD);
   }
 
   analogWrite(pin_pwm, abs(*pwm_val));
-}
-
-void init_servo(Servo* motor, int pwm_pin) {
-  motor->attach(pwm_pin);
-}
-
-void set_servo_speed(Servo* motor, 
-                     PID_Vars* pid, 
-                     float ang_speed_req,
-                     float ang_speed_act,
-                     float t_elapsed) {
-  // float ang_speed = pid->update_pid(ang_speed_req, ang_speed_act, t_elapsed);
-  int pwm_val = round(map(ang_speed_req, -MAX_ROT_SPEED, MAX_ROT_SPEED, 0, 180));
-  motor->write(pwm_val);
 }
 
 /*

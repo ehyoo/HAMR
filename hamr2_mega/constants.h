@@ -81,7 +81,7 @@
 // #define M2_FLT_PIN 53
 
 #define MT_PWM_PIN 11
-#define MT_DIR_PIN 12
+#define MT_DIR_PIN 13
 // #define MT_SLP_PIN 39
 // #define MT_FLT_PIN 41
 

@@ -61,8 +61,6 @@
 #define SIG_HOLO_R_KI 'I'
 #define SIG_HOLO_R_KD 'O'
 
-#define SIG_MOVE_FALSE 'z'
-
 
 /********************* *************************
  * Pin Definitions

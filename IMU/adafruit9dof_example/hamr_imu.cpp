@@ -88,8 +88,11 @@ void initialize_imu() {
     Serial.print("Ooops, no L3GD20 detected ... Check your wiring or I2C ADDR!");
     imu_working = 0;
   }
-  Serial.println("Beignning IMU calibration.\n");
-  calibrate_imu();
+  
+  if(imu_working){
+    Serial.println("Beignning IMU calibration.\n");
+    calibrate_imu();
+  }
 }
 
 int is_imu_working(){

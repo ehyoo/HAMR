@@ -4,14 +4,14 @@ This file contains all non critical constants or constants that are not meant to
 """
 
 # SLIDERS
-MIN_R_MOTOR = -1
-MAX_R_MOTOR = 1
+MIN_R_MOTOR = -.5
+MAX_R_MOTOR = .5
 
-MIN_L_MOTOR = -1
-MAX_L_MOTOR = 1
+MIN_L_MOTOR = -.5
+MAX_L_MOTOR = .5
 
-MIN_T_MOTOR = -1
-MAX_T_MOTOR = 1
+MIN_T_MOTOR = -2
+MAX_T_MOTOR = 2
 
 MIN_P = 0
 MAX_P = .2
@@ -29,12 +29,12 @@ PID_PRECISION = .01
 
 
 # GRAPHING 
-NUM_DATA_POINTS = 5
-NUM_PLOTS = 9
+NUM_DATA_POINTS = 6 + 1
+NUM_PLOTS = 6
 DATA_SIZE = 500
 GRAPH_UPDATE_DELAY = 20
 
-GRAPH_ROWS = 3
+GRAPH_ROWS = 2
 
 
 # SIGNALS

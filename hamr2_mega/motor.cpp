@@ -69,5 +69,4 @@ float get_speed(long encoder_counts,
 float get_ang_speed(long encoder_counts,
                     float ticks_per_rev,
                     float time_elapsed) {
-  return 2.0 * PI * (((float) encoder_counts) / ticks_per_rev) / (time_elapsed / 1000.0);
-}
+  return 360 * (((float) encoder_counts) / ticks_per_rev) / (time_elapsed / 1000.0);}

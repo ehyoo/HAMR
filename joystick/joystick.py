@@ -107,7 +107,8 @@ def read_joystick():
         # obtain signals
         x = commands[0]     # left/right
         y = -commands[1]    # forward/backward
-        theta = commands[THETA_POSITION] # rotation
+        #theta = commands[THETA_POSITION] # rotation controlled by controller
+        theta = 0 # rotation set to constant - easier to control by joystick
         send_signal = commands[4] # index finger button. controls signals
 
         # round signals

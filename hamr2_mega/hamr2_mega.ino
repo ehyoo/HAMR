@@ -177,37 +177,7 @@ void right_angle_vid_test() {
       desired_h_xdot = 0;
       desired_h_ydot = 0;
     }
-}
 
-void zipper_path() {
-    if(millis() < startMilli + 4000){
-      desired_h_xdot = .2;
-      desired_h_ydot = 0;
-    } else if(millis() < startMilli + 8000){
-      desired_h_xdot = 0;
-      desired_h_ydot = .2;
-    } else if(millis() < startMilli + 12000){
-      desired_h_xdot = -.2;
-      desired_h_ydot = 0;
-    } else if(millis() < startMilli + 16000){
-      desired_h_xdot = 0;
-      desired_h_ydot = .2;
-    } else if(millis() < startMilli + 20000){
-      desired_h_xdot = .2;
-      desired_h_ydot = 0;
-    } else if(millis() < startMilli + 24000){
-      desired_h_xdot = 0;
-      desired_h_ydot = .2;
-    } else if(millis() < startMilli + 28000){
-      desired_h_xdot = -.2;
-      desired_h_ydot = 0;
-    } else if(millis() < startMilli + 32000){
-      desired_h_xdot = 0;
-      desired_h_ydot = .2;
-    }else {
-      desired_h_xdot = 0.0;
-      desired_h_ydot = 0.0;
-    }
 }
 
 /***************************/
@@ -222,7 +192,7 @@ void loop() {
     // uncomment the first and last line in while loop to test timing
     // unsigned long start_time = micros();
 
-    //zipper_path();
+
     //square_vid_test();
     //right_angle_vid_test();
 
@@ -263,7 +233,7 @@ void loop() {
       /* *********************** */
       /* BEGIN HOLONOMIC CONTROL */
       // compute xdot, ydot, and theta dot using the sensed motor velocties and drive angle
-      compute_global_state(sensed_M1_v, sensed_M2_v, sensed_MT_v, 2*PI*sensed_drive_angle,
+      compute_global_state(sensed_M1_v, sensed_M2_v, sensed_MT_v, sensed_drive_angle,
                            &computed_xdot, &computed_ydot, &computed_tdot);
       //
       h_xdot_cmd = desired_h_xdot;
@@ -328,8 +298,6 @@ void loop() {
                 MT_DIR_PIN,
                 MT_PWM_PIN);
     }
-
-    //analogWrite(MT_PWM_PIN, 50);
 
     // Serial.print(desired_MT_v); Serial.print(" sensed ");
     // Serial.println(sensed_MT_v); Serial.println(decoder_count_MT);
@@ -647,13 +615,6 @@ void compute_sensed_motor_velocities() {
   decoder_count_M1_prev = decoder_count_M1;
   decoder_count_M2_prev = decoder_count_M2;
   decoder_count_MT_prev = decoder_count_MT;
-
-  Serial.print(decoder_count_M1);
-  Serial.print(" ");
-  Serial.print(decoder_count_M2);
-  Serial.print(" ");
-  Serial.print(decoder_count_MT);
-  Serial.print("\n");
 
   // Moving average filter on decoder count differences
   for (int i = 1; i < AVG_FILT_SZ; i++) {

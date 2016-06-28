@@ -1,3 +1,5 @@
+# Main logic for building the graphs
+# Make custom graphs using the PlotColumn class
 from kivy.app import App
 from kivy.lang import Builder
 from kivy.uix.boxlayout import BoxLayout
@@ -16,17 +18,20 @@ class PlotColumn(BoxLayout):
     # graphs_wanted: number of graphs you want. default width*height
     # graph_lims: dictionary of x_lim and y_lim. 
     # template is {graph_#: [(xmin, xmax),(ymin, ymax)]}
+    # subgraph_names: labels for the subgraphs, {graph#: name1}
     def __init__(self, label_text, 
                 width, height, 
                 graphs_wanted=0,
-                graph_lims={}, 
+                graph_lims={},
+                subgraph_names={}, 
                 *args, **kwargs):
         super(PlotColumn, self).__init__(*args, **kwargs)
         self.orientation = 'vertical'
         self.add_widget(Label(text=label_text, size_hint=(1, 0.05)))
-        self.add_widget(self.figure(width, height, graphs_wanted, graph_lims))
+        self.add_widget(self.figure(
+            width, height, graphs_wanted, graph_lims, subgraph_names))
 
-    def figure(self, width, height, graphs_wanted, graph_lims):
+    def figure(self, width, height, graphs_wanted, graph_lims, subgraph_names):
         # Generates a plot with the number of subplots delineated 
         # by graphs_wanted. If graphs_wanted is not defined, then
         # generates maximum number of graphs. 
@@ -42,19 +47,29 @@ class PlotColumn(BoxLayout):
             for j in range(1, height + 1):
                 if counter <= graph_count:
                     subplot = fig.add_subplot(height, width, counter)
-                    subplot.axis([-10, 10, -1, 1])
+                    subplot.axis([-1.2, 1.2, -10, 0]) #defaults
                     fig.add_subplot()
-                    for key in graph_lims:
-                        if key == counter:
-                            # recall: [(xmin, xmax), (ymin, ymax)]
-                            subplot.set_xlim(graph_lims[key][0][0], 
-                                graph_lims[key][0][0])
-                            subplot.set_ylim(graph_lims[key][1][0], 
-                                graph_lims[key][1][1])
+                    self.graph_setter(subplot, counter, graph_lims)
+                    self.graph_setter(subplot, counter, subgraph_names)
                     counter += 1
         return FigureCanvas(fig)
 
-    # def figure(self, width, height, graphs_wanted):
+    def graph_setter(self, subplot, counter, plot_dict):
+        # helper function that implements certain attributes to a subplot 
+        # that's passed in. currently only supporting x and y max/min 
+        # and title setting
+        for key in plot_dict:
+            if key == counter:
+                if type(plot_dict[key][0]) == tuple:
+                    print 'hits'                
+                    subplot.set_xlim(plot_dict[key][0][0], 
+                                    plot_dict[key][0][0])
+                    subplot.set_ylim(plot_dict[key][1][0], 
+                                    plot_dict[key][1][1])
+                elif type(plot_dict[key]) == str:
+                    subplot.set_title(plot_dict[key])
+
+    # def figure(self, width, height, graphs_wanted, graph_lims, blah):
     #     fig = plt.figure(figsize=(21,8), facecolor='#E1E6E8')
     #     plt.subplots_adjust(left=.3)
 
@@ -91,7 +106,6 @@ class PlotColumn(BoxLayout):
 
         return tuple([line for line in lines])
 
-
     def update_animation(self, data):
         global xdata 
         global ydata
@@ -110,10 +124,21 @@ class Layout(BoxLayout):
         super(Layout, self).__init__(**kwargs)
         self.orientation='horizontal'
         self.add_widget(PlotColumn(
-            'Right Motor Velocity (m/s)', 1, 2))
+            'xdot', 
+            width=1, 
+            height=2, 
+            subgraph_names={1: 'Desired (m/s)', 2: 'Computed'}))
+
         self.add_widget(PlotColumn(
-            'Left Motor Velocity (m/s)', 1, 2))
+            'ydot', 
+            width=1, 
+            height=2, 
+            subgraph_names={1: 'Desired (m/s)', 2: 'Computed'}))
+
         self.add_widget(PlotColumn(
-            'Setpoint Velocity (m/s)', 1, 2))
-        self.add_widget(PlotColumn(
-            'Angular Velocity (deg/s)', 2, 2, graphs_wanted=3))
+            'hdot/rdot', 
+            width=1, 
+            height=2, 
+            graph_lims={1: [(-10, 0),(-360, 360)], 2: [(-10, 0),(-360, 360)]}, 
+            subgraph_names={1: 'Desired (m/s)', 2: 'Computed'}))
+        

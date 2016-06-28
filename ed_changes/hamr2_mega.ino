@@ -133,6 +133,16 @@ void setup() {
   init_actuators();           // initialiaze all motors
   // init_encoder_interrupts();  // initialize the encoder interrupts
   init_I2C();                 // initialize I2C bus as master
+  init_decoders();
+  enable_decoder_clk();
+
+  for (int i = 0; i < AVG_FILT_SZ; i++) {
+    decoder_count_arr_M1[i] = 0.0;
+    decoder_count_arr_M2[i] = 0.0;
+    decoder_count_arr_MT[i] = 0.0;
+  }
+
+  // initialize_imu();          // initialize this after integrating IMU
 
   delay(2500);
   startMilli = millis(); //startMicro = micros()
@@ -156,17 +166,6 @@ void square_vid_test() {
       desired_h_xdot = 0;
       desired_h_ydot = 0;
     }
-}
-
-void forward_test() {
-  Serial.print("going forward...\n");
-  desired_M1_v = 1.0; 
-  desired_M2_v = 1.0;
-  delay(1000);
-  desired_M1_v = 0; 
-  desired_M2_v = 0;
-  Serial.print("Stop.\n");
-  delay(1000);
 }
 
 /*RIGHT ANGLE VIDEO TEST*/
@@ -230,11 +229,9 @@ void loop() {
     //square_vid_test();
     //right_angle_vid_test();
 
-    forward_test();
-
     if ((millis() - lastMilli) >= LOOPTIME) { //micros() - lastMicro()
       //serial communication
-      //read_serial();
+      read_serial();
       send_serial();
 
       t_elapsed = (float) (millis() - lastMilli); // (micros() - lastMicros) / 1000.0
@@ -307,7 +304,6 @@ void loop() {
       /* ********************** */
 
       // Serial.println(desired_MT_v);
-      
       set_speed(&pid_vars_M1,
                 desired_M1_v,
                 sensed_M1_v,
@@ -316,13 +312,6 @@ void loop() {
                 &pwm_M1,
                 M1_DIR_PIN,
                 M1_PWM_PIN);
-      Serial.print("Desired\n");
-      Serial.print(desired_M1_v);
-      Serial.print("\n");
-      Serial.print("PWM\n");
-      Serial.print(M1_PWM_PIN);
-      Serial.print("\n");
-      
 
       set_speed(&pid_vars_M2,
                 desired_M2_v,
@@ -536,7 +525,6 @@ void read_serial() {
     }
 
     if (Serial.available()) {
-      Serial.print("HITS THIS\n");
       *sig_var = Serial.readString().toFloat();
       Serial.print(" "); Serial.print(*sig_var);
 
@@ -555,33 +543,31 @@ void send_serial() {
   // [REF]- what's being sent
   // unsigned long starttime = micros(); //uncomment for  time testing
   if (send_data and Serial) {
-    // Serial.println(SIG_START_STRING);
+    Serial.println(SIG_START_STRING);
     delayMicroseconds(500);
-    //Serial.println(millis() - startMilli); // total time
+    Serial.println(millis() - startMilli); // total time
 
 
-    // Serial.println(desired_h_xdot, 3);
-    // Serial.println(desired_h_ydot, 3);
-    // Serial.println(desired_h_rdot, 3);
+    Serial.println(desired_h_xdot, 3);
+    Serial.println(desired_h_ydot, 3);
+    Serial.println(desired_h_rdot, 3);
 
-    // Serial.println(computed_xdot, 3);
-    // Serial.println(computed_ydot, 3);
-    //Serial.println(computed_tdot, 3);
+    Serial.println(computed_xdot, 3);
+    Serial.println(computed_ydot, 3);
+    Serial.println(computed_tdot, 3);
 
-    // Serial.println(desired_M1_v, 3);
-    // Serial.println(desired_M2_v, 3);
-    // Serial.println(desired_MT_v, 3);
+    Serial.println(desired_M1_v, 3);
+    Serial.println(desired_M2_v, 3);
+    Serial.println(desired_MT_v, 3);
 
-    // Serial.println(sensed_M1_v, 3);
-    // Serial.println(sensed_M2_v, 3);
-    //Serial.println(sensed_MT_v, 3);
+    Serial.println(sensed_M1_v, 3);
+    Serial.println(sensed_M2_v, 3);
+    Serial.println(sensed_MT_v, 3);
 
-    // Serial.println(hamr_loc.theta);
-    // Serial.println(hamr_loc.w);
-    // Serial.println(sensed_drive_angle);
+    Serial.println(hamr_loc.theta);
+    Serial.println(hamr_loc.w);
+    Serial.println(sensed_drive_angle);
 
-
-    // was already commented out
     // Serial.println(desired_dd_v);
     // Serial.println(desired_dd_r);
   }
@@ -629,15 +615,13 @@ void compute_sensed_motor_velocities() {
   // uses the libas library to read from pins
   // pins are CLK, DI, CSn- currently arbitrarily set to 1. 
   // TODO: CHANGE THESE PINS LATER
-  libas * libas_M1 = new libas(24, 26, 22); //SAME AS LAST
-  libas * libas_M2 = new libas(30, 32, 28); // TAKE THE PREVIOUS AND ADD 6
-  // libas * libas_MT = new libas(1, 1, 1); CHANGE THIS LATER
+  libas_M1 = new libas(24, 26, 22); //SAME AS LAST
+  libas_M2 = new libas(30, 32, 28); // TAKE THE PREVIOUS AND ADD 6
+  // libas_MT = new libas(1, 1, 1); CHANGE THIS LATER
 
   decoder_count_M1 = libas_M1->GetPosition();
   decoder_count_M2 = libas_M2->GetPosition();
-  delete libas_M1;
-  delete libas_M2;
-  decoder_count_MT = 0;
+  decoder_count_MT = 0; //libas_MT->GetPosition();
   // =========
 
   Serial.println(decoder_count_MT);
@@ -652,13 +636,12 @@ void compute_sensed_motor_velocities() {
   decoder_count_M2_prev = decoder_count_M2;
   decoder_count_MT_prev = decoder_count_MT;
 
-  // [ed]- commented out
-  // Serial.print(decoder_count_M1);
-  // Serial.print(" ");
-  // Serial.print(decoder_count_M2);
-  // Serial.print(" ");
-  // Serial.print(decoder_count_MT);
-  // Serial.print("\n");
+  Serial.print(decoder_count_M1);
+  Serial.print(" ");
+  Serial.print(decoder_count_M2);
+  Serial.print(" ");
+  Serial.print(decoder_count_MT);
+  Serial.print("\n");
 
   // Moving average filter on decoder count differences
   for (int i = 1; i < AVG_FILT_SZ; i++) {
@@ -677,13 +660,6 @@ void compute_sensed_motor_velocities() {
   sensed_M1_v = get_speed(decoder_count_change_filt_M1, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
   sensed_M2_v = get_speed(decoder_count_change_filt_M2, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
   sensed_MT_v = get_ang_speed(decoder_count_change_filt_MT, TICKS_PER_REV_TURRET, t_elapsed);
-
-  Serial.print("Sensed Velocities: \n");
-  Serial.print(sensed_M1_v);
-  Serial.print("\n");
-  Serial.print(sensed_M2_v);
-  Serial.print("\n");
-  
 
   // Serial.print("sensed: "); Serial.print(sensed_MT_v);
   // Serial.print(" desired: "); Serial.println(desired_MT_v);
@@ -858,3 +834,4 @@ int adjust_speed(int pwm, int desired) {
   }
   return pwm;
 }
+

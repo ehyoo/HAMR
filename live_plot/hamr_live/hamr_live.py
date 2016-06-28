@@ -313,11 +313,6 @@ def write_input_3(val):
     device.write(current_input[2])
     device.write(str(val))
 
-
-
-
-
-
 # map labels to control signals
 current_mode = 'HOLO X'
 P_map = {'R Motor': SIG_R_KP, 'L Motor': SIG_L_KP, 'T Motor': SIG_T_KP, 'HOLO X': SIG_HOLO_X_KP, 'HOLO Y': SIG_HOLO_Y_KP, 'HOLO R': SIG_HOLO_R_KP}

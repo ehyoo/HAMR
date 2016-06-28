@@ -29,6 +29,10 @@ def precision(val, prec):
 
 
 def init_joystick():
+    # [Ed] Gets the list of connected joysticks, connects to the first one
+    # and returns the Joystick object. 
+    # If there are no Joystick objects, it returns None.
+    # [complaint] returning none- pretty dangerous
     pygame.init()
 
     # Set up the joystick
@@ -56,10 +60,25 @@ def init_joystick():
 
 
 def get_readings(my_joystick, use_minimal):
+    # [Ed] my_joystick being the joystick object
+    # and use_minimal = 0
+    # Iterates through the axes and buttons and stores
+    # the values in a list.
+
+    # [Complaint] oh boy oh boy:
+    # 1) The usage of use_minimal- it's given a value of 0 but is treated 
+    # like a boolean- which while works why not just use a boolean? That
+    # would give clearer message.
+    # Also why even use that boolean in the first place? That block of code
+    # isn't even called.
+    # 2) The usage of a list. It works but using a dictionary would have been
+    # much better. 
     g_keys = pygame.event.get()
 
     commands = []
     if (use_minimal):
+        # [ed] THIS IS NEVER CALLED. EVER. 
+
         # Returns only joystick throttle/pivots (no buttons)
         # 3 readings between [-1,1]: x, y, theta
         for i in range(0, my_joystick.get_numaxes()-1):
@@ -79,12 +98,18 @@ def get_readings(my_joystick, use_minimal):
 
 # initialize joystick and serial connection
 def initialize_joystick():
+    # [Ed] Initializes the joystick global variable and 
+    # assigns the joystick object to it using the init_joystick
+    # method.
+    # [complaint] But why would you use a global variable?
     global joystick
     joystick = init_joystick()
     time.sleep(1)
 
 
 def initialize_hamr():
+    # [Ed] Uses the hamr_serial module they've defined 
+    # [todo] Come back later once you've read the hamr_serial code.
     global device
     device = hamr_serial.initialize(port, baudrate, timeout_=2, write_timeout_=2)
     hamr_serial.connect(device)
@@ -92,6 +117,8 @@ def initialize_hamr():
 
 
 def read_joystick():
+    # [Ed] Reads from the joysticks and does some calculations and 
+    # writes to the HAMR. 
     global val_dd_v_prev
     global sig_l_prev
     global val_dd_r_prev
@@ -157,6 +184,8 @@ def external_main(dev):
 
 
 def equals_float(a, b):
+    # [Ed] this method is absolutely unnecessary.
+    # It's not called and I'm not too sure of what it does. 
     if abs(a-b) < .001: 
         return True
     else: 

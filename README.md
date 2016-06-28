@@ -1,4 +1,8 @@
 # HAMR
+branch of the libas integration (encoder libraries) that implement SSI communication.
+
+----
+
 Senior design project, 2015-2016, University of Pennsylvania
 
 Tighe Costa

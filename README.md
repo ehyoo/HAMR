@@ -1,4 +1,6 @@
 # HAMR
+Porting over current matplotlib GUI to kivy
+----
 Senior design project, 2015-2016, University of Pennsylvania
 
 Tighe Costa

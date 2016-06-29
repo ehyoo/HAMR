@@ -1,6 +1,7 @@
 #######################################################
 # CALLBACK FUNCTIONS
 #######################################################
+
 def callback_connect(event):
     if button_connect.label.get_text() == 'Connect':
         connect_arduino()
@@ -115,8 +116,6 @@ def write_input_3(val):
     val = precision(val, INPUT_PRECISION)
     device.write(current_input[2])
     device.write(str(val))
-
-
 
 
 

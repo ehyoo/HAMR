@@ -13,17 +13,9 @@ import numpy as np
 sys.path.append('../modules')
 sys.path.append('../shared')
 import hamr_serial
+import time_me
 import global_variables as gv
 import constants
-
-def connection_callback(button_instance):
-    # directs the callback to connect or disconnect
-    if button_instance.text == 'Connect':
-        connect_arduino(button_instance)
-        button_instance.text = 'Disconnect'
-    elif button_instance.text == 'Disconnect':
-        disconnect_arduino(button_instance)
-        button_instance.text = 'Connect'
 
 def connect_arduino(button_instance):
     # Connects to hamr and clears xdata and ydata
@@ -39,55 +31,43 @@ def disconnect_arduino():
     gv.continue_reading = False
     while reading: pass # waits for reading to turn to false
 
-    hamr_serial.write(device, constants.SIG_STOP_LOG)
-    hamr_serial.disconnect(device)
+    hamr_serial.write(gv.device, constants.SIG_STOP_LOG)
+    hamr_serial.disconnect(gv.device)
 
-    button_connect.label.set_text("Connect")
-    button_log_data.label.set_text("Log Data")
+    # button_log_data.label.set_text("Log Data") # TODO: change logdata button
     print "Disonnected Succesfully"
 
 
 def log_arduino():  
-    global continue_reading
-    global thread_read
-    global xdata
-    global ydata
-
     # attempt to connect. wait 1000 ms before giving up
     device.write(constants.SIG_START_LOG)
     print "Sent SIG_START_LOG\n"
     timer = time_me.TimeMe(1000)
     connected = True
-    while device.read() != constants.SIG_START_LOG:
+    while gv.device.read() != constants.SIG_START_LOG:
         if timer.times_up(): # give up
             connected = False
-            print "Failed to receive confirmation signal\n"
+            raise IOError("Failed to receive confirmation signal\n")
             break
-
     if connected:
         continue_reading = True
-        thread_read = threading.Thread(target=read_loop)
-        thread_read.start()
-
-        button_log_data.label.set_text('Stop Logging')
-
+        gv.thread_read = threading.Thread(target=read_loop)
+        gv.thread_read.start()
         # reset graphing data arrays
-        xdata = np.zeros(DATA_SIZE)
-        for y in ydata: y[:] = None
+        gv.xdata = np.zeros(DATA_SIZE)
+        for y in gv.ydata: y[:] = None
 
 
-def end_log_arduino():
-    global continue_reading
+def end_log_arduino(button_instance):
     # tell thread read to exit and wait for it to do so
-    continue_reading = False
-    while(reading): pass
-
+    gv.continue_reading = False
+    while(gv.reading): pass
     # attempt to disconnect
-    device.write(SIG_STOP_LOG) 
+    gv.device.write(constants.SIG_STOP_LOG) 
     print "Sent SIG_STOP_LOG\n"
     timer = time_me.TimeMe(2000)
-    while device.read() != SIG_STOP_LOG:
+    while gv.device.read() != constants.SIG_STOP_LOG:
         if timer.times_up(): #give up
-            print "Failed to receive confirmation signal\n"
+            raise IOError("Failed to receive confirmation signal\n")
             break
-    button_log_data.label.set_text('Log Data')
+    # button_instance.set_text('Log Data') TODO: change this

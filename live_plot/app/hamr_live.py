@@ -26,18 +26,6 @@ import joystick
 # If the Arduino disconnects, disconnect the software first. Then reconnect. Or restart the program.
 # Avoid using CTRL + C. 
 
-# IMPORTANT! Ensure these variables correspond to the Arduino
-PORT = 'COM15'
-BAUDRATE = 250000
-
-SIG_STARTING_STRING = '$\n'
-BLIT = False
-if platform.system() is 'Windows':
-    SIG_STARTING_STRING = '$\r\n'
-    BLIT = True
-
-WRITE_DELAY = .03
-
 # http://pyserial.readthedocs.org/en/latest/tools.html. Use this to automatically detect arduino
 
 
@@ -138,7 +126,7 @@ def read_joystick():
 # m_axes['graph number'].set_ylim(-1.5,1.5)
 
 ## AYY LMAO
-pause_graph = False
+
 ## AYYY
 
 # initial state for blitting
@@ -197,14 +185,14 @@ radio_mode.on_clicked(callback_radio_mode)
 # MAIN                                 
 #######################################################
 def main():
-    global device
-    # global reading  # while this is true, thread_read is still alive
-    # global continue_reading  # If this is true, then the thread_read thread will not exit
+    gv.device
     gv.reading 
     gv.continue_reading
+
     # begin setup hamr serial connection
-    reading = False     
-    device = hamr_serial.initialize(PORT, BAUDRATE, timeout_=.3, write_timeout_=.3)
+    gv.reading = False     
+    gv.device = hamr_serial.initialize(
+        PORT, BAUDRATE, timeout_=.3, write_timeout_=.3)
 
     # begin joystick thread
     thread_joystick = threading.Thread(target=read_joystick)
@@ -215,7 +203,7 @@ def main():
     plt.show()
 
     # program was closed
-    continue_reading = False  # tell thread_read to exit
+    gv.continue_reading = False  # tell thread_read to exit
     while reading: pass  # wait until thread_read has finished
     device.close()
     print 'Program Exitted'

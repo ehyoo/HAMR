@@ -2,10 +2,6 @@
 # CALLBACK FUNCTIONS
 #######################################################
 
-
-update_arduino_immediately = False # Check this out i have no idea rn
-
-
 def callback_check(label):
     global update_arduino_immediately
     update_arduino_immediately = not update_arduino_immediately

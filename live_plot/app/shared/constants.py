@@ -3,6 +3,19 @@
 This file contains all non critical constants or constants that are not meant to be changed (the SIG consstants).
 """
 
+# IMPORTANT! Ensure these variables correspond to the Arduino
+PORT = 'COM15'
+BAUDRATE = 250000
+
+SIG_STARTING_STRING = '$\n'
+BLIT = False
+if platform.system() is 'Windows':
+    SIG_STARTING_STRING = '$\r\n'
+    BLIT = True
+
+WRITE_DELAY = .03
+
+
 # SLIDERS
 MIN_R_MOTOR = -.5
 MAX_R_MOTOR = .5

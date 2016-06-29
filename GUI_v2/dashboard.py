@@ -51,7 +51,7 @@ class SliderCombo(BoxLayout):
     def __init__(self, callback, **kwargs):
         # Need to pass in a function as a callback
         super(SliderCombo, self).__init__(**kwargs)
-        slider = Slider(min=-1, max=1, value=0.5)
+        slider = Slider(min=-1, max=1, value=0)
         label = Label(text='0.00', size_hint=(0.05, 1.0))
         
         def label_change(self, combo_instance):

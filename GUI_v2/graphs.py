@@ -17,7 +17,7 @@ class PlotColumn(BoxLayout):
     # width, height: how many graphs wide and tall you want the plot to be
     # graphs_wanted: number of graphs you want. default width*height
     # graph_lims: dictionary of x_lim and y_lim. 
-    # template is {graph_#: [(xmin, xmax),(ymin, ymax)]}
+    # template is {graph_#: [xmin, xmax, ymin, ymax]}
     # subgraph_names: labels for the subgraphs, {graph#: name1}
     def __init__(self, label_text, 
                 width, height, 
@@ -47,7 +47,7 @@ class PlotColumn(BoxLayout):
             for j in range(1, height + 1):
                 if counter <= graph_count:
                     subplot = fig.add_subplot(height, width, counter)
-                    subplot.axis([-1.2, 1.2, -10, 0]) #defaults
+                    subplot.axis([-10, 0, -1.2, 1.2]) #defaults
                     fig.add_subplot()
                     self.graph_setter(subplot, counter, graph_lims)
                     self.graph_setter(subplot, counter, subgraph_names)
@@ -60,44 +60,19 @@ class PlotColumn(BoxLayout):
         # and title setting
         for key in plot_dict:
             if key == counter:
-                if type(plot_dict[key][0]) == tuple:
-                    print 'hits'                
-                    subplot.set_xlim(plot_dict[key][0][0], 
-                                    plot_dict[key][0][0])
-                    subplot.set_ylim(plot_dict[key][1][0], 
-                                    plot_dict[key][1][1])
+                if type(plot_dict[key]) == list:
+                    print 'hits' 
+                    subplot.axis(plot_dict[key])
                 elif type(plot_dict[key]) == str:
                     subplot.set_title(plot_dict[key])
 
-    # def figure(self, width, height, graphs_wanted, graph_lims, blah):
-    #     fig = plt.figure(figsize=(21,8), facecolor='#E1E6E8')
-    #     plt.subplots_adjust(left=.3)
-
-    #     # create NUM_PLOTS subplots in 2 rows
-    #     graph_columns = np.ceil(NUM_PLOTS/float(GRAPH_ROWS))
-    #     m_axes = [plt.subplot(int(100 * GRAPH_ROWS + 10 * graph_columns + x + 1)) for x in range(NUM_PLOTS)]
-
-    #     xdata = np.zeros(DATA_SIZE)
-    #     ydata = [np.full(DATA_SIZE, None) for x in range(NUM_PLOTS)]
-
-    #     # set axis limits
-    #     lines = [m_axes[x].plot(ydata[x], '-')[0] for x in range(NUM_PLOTS)]
-    #     for x in range(NUM_PLOTS):
-    #         m_axes[x].set_ylim(-1.2,1.2)
-    #         # m_axes[x].set_title('Plot ' + str(x))
-    #         # m_axes[x].get_xaxis().set_visible(False)
-    #     m_axes[0].set_title('desired_h_xdot (m/s)')
-    #     m_axes[1].set_title('desired_h_ydot (m/s)')
-    #     m_axes[2].set_title('desired_h_rdot (deg/s)')
-    #     m_axes[2].set_ylim(-360,360) 
-
-    #     m_axes[3].set_title('computed_xdot')
-    #     m_axes[4].set_title('computed_ydot')
-    #     m_axes[5].set_title('computed_tdot')
-    #     m_axes[5].set_ylim(-360,360)
-    #     return FigureCanvas(fig)
-
-    # initial state for blitting
+#### I have no idea what this does
+# xdata = np.zeros(DATA_SIZE)
+# ydata = [np.full(DATA_SIZE, None) for x in range(NUM_PLOTS)]
+# # set axis limits
+# lines = [m_axes[x].plot(ydata[x], '-')[0] for x in range(NUM_PLOTS)]
+####
+    #initial state for blitting
     def init_blit(self):
         for j in range(NUM_PLOTS):
             lines[j].set_ydata([])
@@ -139,6 +114,6 @@ class Layout(BoxLayout):
             'hdot/rdot', 
             width=1, 
             height=2, 
-            graph_lims={1: [(-10, 0),(-360, 360)], 2: [(-10, 0),(-360, 360)]}, 
+            graph_lims={1: [-10, 0, -360, 360], 2: [-10, 0, -360, 360]}, 
             subgraph_names={1: 'Desired (m/s)', 2: 'Computed'}))
         

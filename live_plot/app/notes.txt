@@ -1,0 +1,8 @@
+This is just notes for me (Ed) so I know exactly what's going on. 
+
+
+
+ydata: makes a numpy matrix
+	arduino_functions.connect_arduino: connects and then clears the xdata and ydata arrays by passing zeros into xdata and None into ydata
+
+	why 0s into x and None into y???

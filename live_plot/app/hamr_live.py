@@ -198,9 +198,10 @@ radio_mode.on_clicked(callback_radio_mode)
 #######################################################
 def main():
     global device
-    global reading  # while this is true, thread_read is still alive
-    global continue_reading  # If this is true, then the thread_read thread will not exit
-
+    # global reading  # while this is true, thread_read is still alive
+    # global continue_reading  # If this is true, then the thread_read thread will not exit
+    gv.reading 
+    gv.continue_reading
     # begin setup hamr serial connection
     reading = False     
     device = hamr_serial.initialize(PORT, BAUDRATE, timeout_=.3, write_timeout_=.3)

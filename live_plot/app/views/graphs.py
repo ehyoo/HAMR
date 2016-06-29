@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 import matplotlib.pyplot as plt
 import numpy as np
 from constants import *
-pause_graph = False
 
 class PlotColumn(BoxLayout):
     # A column consisting of a label and graphs.
@@ -30,6 +29,14 @@ class PlotColumn(BoxLayout):
         self.add_widget(Label(text=label_text, size_hint=(1, 0.05)))
         self.add_widget(self.figure(
             width, height, graphs_wanted, graph_lims, subgraph_names))
+
+# TODO: PUT THIS SOMEWHERE
+xdata = np.zeros(DATA_SIZE) # numpy array of DATA_SIZE length
+ydata = [np.full(DATA_SIZE, None) for x in range(NUM_PLOTS)]
+# numpy matrix of DATA_SIZE length and NUM_PLOTS height
+
+# set axis limits
+lines = [m_axes[x].plot(ydata[x], '-')[0] for x in range(NUM_PLOTS)]
 
     def figure(self, width, height, graphs_wanted, graph_lims, subgraph_names):
         # Generates a plot with the number of subplots delineated 
@@ -66,12 +73,6 @@ class PlotColumn(BoxLayout):
                 elif type(plot_dict[key]) == str:
                     subplot.set_title(plot_dict[key])
 
-#### I have no idea what this does
-# xdata = np.zeros(DATA_SIZE)
-# ydata = [np.full(DATA_SIZE, None) for x in range(NUM_PLOTS)]
-# # set axis limits
-# lines = [m_axes[x].plot(ydata[x], '-')[0] for x in range(NUM_PLOTS)]
-####
     #initial state for blitting
     def init_blit(self):
         for j in range(NUM_PLOTS):

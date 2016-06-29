@@ -1,5 +1,3 @@
-
-
 def callback_connect(event):
     if button_connect.label.get_text() == 'Connect':
         connect_arduino()

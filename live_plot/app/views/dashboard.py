@@ -1,3 +1,6 @@
+# Details the bottom half of the screen:
+# That is, the buttons and the sliders. 
+
 from kivy.app import App
 from kivy.lang import Builder
 from kivy.uix.label import Label
@@ -30,6 +33,10 @@ class ButtonWidget(GridLayout):
             button_list[i].bind(on_press=callback_list[i])
 
     def connect_callback(self, button_instance):
+        if button_instance.text == 'Connect':
+            button_instance.text = 'Disconnect'
+        else:
+            button_instance.text = 'Connect'
         print 'this is the connect callback'
 
     def update_callback(self, button_instance):

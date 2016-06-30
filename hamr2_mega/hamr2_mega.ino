@@ -1,3 +1,5 @@
+#include <libas.h>
+
 #include <Wire.h>
 
 #include "pid.h"
@@ -9,7 +11,7 @@
 #include "holonomic_control.h"
 
 // #include "decoder.h" // [ED] now obsolete
-#include <libas.h> // [ED] use this to read.
+
 
 
 /* -------------------------------------------------------*/
@@ -159,14 +161,14 @@ void square_vid_test() {
 }
 
 void forward_test() {
-  Serial.print("going forward...\n");
-  desired_M1_v = 1.0; 
-  desired_M2_v = 1.0;
-  delay(1000);
-  desired_M1_v = 0; 
-  desired_M2_v = 0;
-  Serial.print("Stop.\n");
-  delay(1000);
+//  Serial.print("going forward...\n");
+//  desired_M1_v = 1.0; 
+//  desired_M2_v = 1.0;
+//  delay(1000);
+//  desired_M1_v = 0; 
+//  desired_M2_v = 0;
+//  Serial.print("Stop.\n");
+//  delay(1000);
 }
 
 /*RIGHT ANGLE VIDEO TEST*/
@@ -629,18 +631,18 @@ void compute_sensed_motor_velocities() {
   // uses the libas library to read from pins
   // pins are CLK, DI, CSn- currently arbitrarily set to 1. 
   // TODO: CHANGE THESE PINS LATER
-  libas * libas_M1 = new libas(24, 26, 22); //SAME AS LAST
-  libas * libas_M2 = new libas(30, 32, 28); // TAKE THE PREVIOUS AND ADD 6
-  // libas * libas_MT = new libas(1, 1, 1); CHANGE THIS LATER
+  libas * libas_M1 = new libas(24, 26, 22, 12); 
+  libas * libas_M2 = new libas(30, 32, 28, 12); 
+  libas * libas_MT = new libas(38, 34, 36, 10);
 
   decoder_count_M1 = libas_M1->GetPosition();
   decoder_count_M2 = libas_M2->GetPosition();
+  decoder_count_MT = libas_MT->GetPosition();
   delete libas_M1;
   delete libas_M2;
-  decoder_count_MT = 0;
+  delete libas_MT;
   // =========
-
-  Serial.println(decoder_count_MT);
+  
   // get change in decoder counts
   float decoder_count_change_M1 = decoder_count_M1 - decoder_count_M1_prev;
   float decoder_count_change_M2 = decoder_count_M2 - decoder_count_M2_prev;
@@ -653,12 +655,12 @@ void compute_sensed_motor_velocities() {
   decoder_count_MT_prev = decoder_count_MT;
 
   // [ed]- commented out
-  // Serial.print(decoder_count_M1);
-  // Serial.print(" ");
-  // Serial.print(decoder_count_M2);
-  // Serial.print(" ");
-  // Serial.print(decoder_count_MT);
-  // Serial.print("\n");
+//  Serial.print(decoder_count_M1);
+//  Serial.print(" ");
+//  Serial.print(decoder_count_M2);
+//  Serial.print(" ");
+//  Serial.print(decoder_count_MT);
+//  Serial.print("\n");
 
   // Moving average filter on decoder count differences
   for (int i = 1; i < AVG_FILT_SZ; i++) {
@@ -677,12 +679,16 @@ void compute_sensed_motor_velocities() {
   sensed_M1_v = get_speed(decoder_count_change_filt_M1, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
   sensed_M2_v = get_speed(decoder_count_change_filt_M2, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
   sensed_MT_v = get_ang_speed(decoder_count_change_filt_MT, TICKS_PER_REV_TURRET, t_elapsed);
+  // M1 and M2 returning m/s
+  // sensed_MT_v returning degrees/s
 
-  Serial.print("Sensed Velocities: \n");
-  Serial.print(sensed_M1_v);
-  Serial.print("\n");
-  Serial.print(sensed_M2_v);
-  Serial.print("\n");
+   Serial.print("Sensed Velocities: \n");
+   Serial.print(sensed_M1_v);
+   Serial.print("\n");
+   Serial.print(sensed_M2_v);
+   Serial.print("\n");
+   Serial.print(sensed_MT_v);
+   Serial.print("\n");
   
 
   // Serial.print("sensed: "); Serial.print(sensed_MT_v);

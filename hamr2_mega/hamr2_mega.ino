@@ -10,9 +10,19 @@
 #include "constants.h"
 #include "holonomic_control.h"
 
-// #include "decoder.h" // [ED] now obsolete
+// ROS things
+#include <ros.h>
+#include <hamr_test/HamrStatus.h>
+#include <hamr_test/MotorStatus.h>
+#include <ros/time.h>
 
-
+// ROS Publishing 
+ros::NodeHandle nh;
+hamr_test::HamrStatus hamrStatus;
+hamr_test::MotorStatus leftMotor;
+hamr_test::MotorStatus rightMotor;
+hamr_test::MotorStatus turretMotor;
+ros::Publisher pub("hamr_state", &hamrStatus);
 
 /* -------------------------------------------------------*/
 /* These following values are modifiable through serial communication or determined by a control output */
@@ -131,7 +141,9 @@ float t_elapsed;
 location hamr_loc;
 
 void setup() {
-  init_serial();              // initialize serial communication
+  nh.initNode();
+  nh.advertise(pub);
+  // init_serial();              // initialize serial communication
   init_actuators();           // initialiaze all motors
   // init_encoder_interrupts();  // initialize the encoder interrupts
   init_I2C();                 // initialize I2C bus as master
@@ -237,7 +249,7 @@ void loop() {
     if ((millis() - lastMilli) >= LOOPTIME) { //micros() - lastMicro()
       //serial communication
       //read_serial();
-      send_serial();
+      
 
       t_elapsed = (float) (millis() - lastMilli); // (micros() - lastMicros) / 1000.0
       lastMilli = millis();
@@ -246,6 +258,9 @@ void loop() {
       //      unsigned int diff = decoder_count_M1;
 
       compute_sensed_motor_velocities(); // read encoders
+
+      send_serial();
+      
       //      Serial.println(decoder_count_M1);
       //      diff = diff - decoder_count_M1;
       //      Serial.println(diff);
@@ -300,7 +315,8 @@ void loop() {
       // Serial.println(desired_MT_v);
 
       // Serial.println(desired_M1_v);
-             desired_MT_v *= 180.0 / PI;
+      
+      desired_MT_v *= 180.0 / PI;
 
       // desired_MT_v is
 
@@ -384,18 +400,6 @@ void loop() {
 /******************************************/
 /* BEGIN SERIAL COMMUNCIATION CODE
   /******************************************/
-
-void init_serial() {
-  Serial.begin(250000);
-  Serial.println("Arduino Ready\n"); // needs to be sent to detect that arduino has initialized
-  Serial.setTimeout(0);              // required to speed up serial reading
-}
-
-// void update_prevs() {
-//   sensed_M1_v_prev = sensed_M1_v;
-//   sensed_M2_v_prev = sensed_M2_v;
-//   sensed_MT_v_prev = sensed_MT_v;
-// }
 
 /* read a byte from Serial. Perform appropriate action based on byte*/
 void read_serial() {
@@ -538,7 +542,6 @@ void read_serial() {
     }
 
     if (Serial.available()) {
-      Serial.print("HITS THIS\n");
       *sig_var = Serial.readString().toFloat();
       Serial.print(" "); Serial.print(*sig_var);
 
@@ -554,41 +557,20 @@ void read_serial() {
   Everything in the if statement takes between 1200 and 1300 microseconds
   uncomment first and last line to test timing */
 void send_serial() {
-  // [REF]- what's being sent
-  // unsigned long starttime = micros(); //uncomment for  time testing
-  if (send_data and Serial) {
-    // Serial.println(SIG_START_STRING);
     delayMicroseconds(500);
-    //Serial.println(millis() - startMilli); // total time
-
-
-    // Serial.println(desired_h_xdot, 3);
-    // Serial.println(desired_h_ydot, 3);
-    // Serial.println(desired_h_rdot, 3);
-
-    // Serial.println(computed_xdot, 3);
-    // Serial.println(computed_ydot, 3);
-    //Serial.println(computed_tdot, 3);
-
-    // Serial.println(desired_M1_v, 3);
-    // Serial.println(desired_M2_v, 3);
-    // Serial.println(desired_MT_v, 3);
-
-    // Serial.println(sensed_M1_v, 3);
-    // Serial.println(sensed_M2_v, 3);
-    //Serial.println(sensed_MT_v, 3);
-
-    // Serial.println(hamr_loc.theta);
-    // Serial.println(hamr_loc.w);
-    // Serial.println(sensed_drive_angle);
-
-
-    // was already commented out
-    // Serial.println(desired_dd_v);
-    // Serial.println(desired_dd_r);
-  }
-  // unsigned long finishtime = micros(); //uncomment for  time testing
-  // Serial.print("total_time: "); Serial.println(finishtime - starttime); //uncomment for  time testing
+    leftMotor.position = decoder_count_M1;
+    rightMotor.position = decoder_count_M2;
+    turretMotor.position = decoder_count_MT;
+    leftMotor.velocity = sensed_M1_v;
+    rightMotor.velocity = sensed_M2_v;
+    turretMotor.velocity = sensed_MT_v;
+    hamrStatus.timestamp = nh.now();
+    hamrStatus.left_motor = leftMotor;
+    hamrStatus.right_motor = rightMotor;
+    hamrStatus.turret_motor = turretMotor;
+    pub.publish(&hamrStatus);
+    nh.spinOnce();
+    delay(100);
 }
 
 /******************************************/
@@ -682,17 +664,7 @@ void compute_sensed_motor_velocities() {
   // M1 and M2 returning m/s
   // sensed_MT_v returning degrees/s
 
-   Serial.print("Sensed Velocities: \n");
-   Serial.print(sensed_M1_v);
-   Serial.print("\n");
-   Serial.print(sensed_M2_v);
-   Serial.print("\n");
-   Serial.print(sensed_MT_v);
-   Serial.print("\n");
-  
 
-  // Serial.print("sensed: "); Serial.print(sensed_MT_v);
-  // Serial.print(" desired: "); Serial.println(desired_MT_v);
 
   hamr_loc.update(sensed_M1_v, sensed_M2_v, WHEEL_DIST, t_elapsed);
 }

@@ -10,19 +10,29 @@
 #include "constants.h"
 #include "holonomic_control.h"
 
-// ROS things
+// ROS things 
 #include <ros.h>
 #include <hamr_test/HamrStatus.h>
 #include <hamr_test/MotorStatus.h>
+#include <hamr_test/HamrCommand.h>
 #include <ros/time.h>
-
-// ROS Publishing 
 ros::NodeHandle nh;
+
+// Publishing
 hamr_test::HamrStatus hamrStatus;
 hamr_test::MotorStatus leftMotor;
 hamr_test::MotorStatus rightMotor;
 hamr_test::MotorStatus turretMotor;
 ros::Publisher pub("hamr_state", &hamrStatus);
+
+// Subscribing
+  // TODO: Make a separate message for commands? 
+  // Or we can just continue to use the HamrStatus message and do validations on
+  // the arduino side. 
+void commandCallback(const hamr_test::HamrCommand& command_msg);
+ros::Subscriber<hamr_test::HamrCommand> sub("hamr_command", &commandCallback);
+
+
 
 /* -------------------------------------------------------*/
 /* These following values are modifiable through serial communication or determined by a control output */
@@ -140,12 +150,18 @@ float t_elapsed;
 // dd localization
 location hamr_loc;
 
+// Some quick (somewhat hacky) setup
+void init_actuators();
+void init_I2C();
+
 void setup() {
-  nh.initNode();
-  nh.advertise(pub);
-  // init_serial();              // initialize serial communication
+  nh.initNode(); // Initialize ros node
+  nh.subscribe(sub); // arduino node subscribes to topic declared above
+  nh.advertise(pub); // advertise the topic that will be published by the arduino
+
+  pinMode(40, OUTPUT); // TESTING FOR BLINKING
+  
   init_actuators();           // initialiaze all motors
-  // init_encoder_interrupts();  // initialize the encoder interrupts
   init_I2C();                 // initialize I2C bus as master
 
   delay(2500);
@@ -231,8 +247,10 @@ void zipper_path() {
 /***************************/
 /* MAIN LOOP
   /***************************/
+void compute_sensed_motor_velocities();
+void send_serial();
+
 void loop() {
-  //  test();       /////////// TESTING
   int i = 0;
 
   while (1) {
@@ -244,7 +262,7 @@ void loop() {
     //square_vid_test();
     //right_angle_vid_test();
 
-    forward_test();
+    //forward_test();
 
     if ((millis() - lastMilli) >= LOOPTIME) { //micros() - lastMicro()
       //serial communication
@@ -260,6 +278,34 @@ void loop() {
       compute_sensed_motor_velocities(); // read encoders
 
       send_serial();
+
+      set_speed(&pid_vars_M1,
+                desired_M1_v,
+                sensed_M1_v,
+                &M1_v_cmd,
+                t_elapsed,
+                &pwm_M1,
+                M1_DIR_PIN,
+                M1_PWM_PIN);
+
+      set_speed(&pid_vars_M2,
+                desired_M2_v,
+                sensed_M2_v,
+                &M2_v_cmd,
+                t_elapsed,
+                &pwm_M2,
+                M2_DIR_PIN,
+                M2_PWM_PIN);
+
+      set_speed(&pid_vars_MT,
+                desired_MT_v,
+                sensed_MT_v,
+                &MT_v_cmd,
+                t_elapsed,
+                &pwm_MT,
+                MT_DIR_PIN,
+                MT_PWM_PIN);
+        digitalWrite(40, HIGH-digitalRead(40));
       
       //      Serial.println(decoder_count_M1);
       //      diff = diff - decoder_count_M1;
@@ -286,12 +332,12 @@ void loop() {
       /* *********************** */
       /* BEGIN HOLONOMIC CONTROL */
       // compute xdot, ydot, and theta dot using the sensed motor velocties and drive angle
-      compute_global_state(sensed_M1_v, sensed_M2_v, sensed_MT_v, 2*PI*sensed_drive_angle,
-                           &computed_xdot, &computed_ydot, &computed_tdot);
-      //
-      h_xdot_cmd = desired_h_xdot;
-      h_ydot_cmd = desired_h_ydot;
-      h_rdot_cmd = desired_h_rdot;
+//      compute_global_state(sensed_M1_v, sensed_M2_v, sensed_MT_v, 2*PI*sensed_drive_angle,
+//                           &computed_xdot, &computed_ydot, &computed_tdot);
+//      //
+//      h_xdot_cmd = desired_h_xdot;
+//      h_ydot_cmd = desired_h_ydot;
+//      h_rdot_cmd = desired_h_rdot;
 
       // UNCOMMENT THE FOLLOWING LINE TO ENABLE HOLONOMIC PID
       // holonomic PID
@@ -299,10 +345,10 @@ void loop() {
       // h_ydot_cmd += pid_vars_h_ydot->update_pid(desired_h_ydot, computed ydot, t_elapsed);
       // h_rdot_cmd += pid_vars_h_rdot->update_pid(desired_h_rdot, computed_tdot * 180 / PI, t_elapsed);
 
-      // using output of holonomic PID, compute jacobian values for motor inputs
-            set_holonomic_desired_velocities(h_xdot_cmd, h_ydot_cmd, h_rdot_cmd); // set these setpoints to the output of the holonomic PID controllers
-            get_holonomic_motor_velocities(sensed_drive_angle, &desired_M1_v, &desired_M2_v, &desired_MT_v);
-            get_holonomic_motor_velocities(hamr_loc.theta, &desired_M1_v, &desired_M2_v, &desired_MT_v);
+//      // using output of holonomic PID, compute jacobian values for motor inputs
+//            set_holonomic_desired_velocities(h_xdot_cmd, h_ydot_cmd, h_rdot_cmd); // set these setpoints to the output of the holonomic PID controllers
+//            get_holonomic_motor_velocities(sensed_drive_angle, &desired_M1_v, &desired_M2_v, &desired_MT_v);
+//            get_holonomic_motor_velocities(hamr_loc.theta, &desired_M1_v, &desired_M2_v, &desired_MT_v);
       //
       // Serial.print(hamr_loc.w);  Serial.print(" ");
       // Serial.println(computed_tdot);
@@ -326,39 +372,13 @@ void loop() {
 
       // Serial.println(desired_MT_v);
       
-      set_speed(&pid_vars_M1,
-                desired_M1_v,
-                sensed_M1_v,
-                &M1_v_cmd,
-                t_elapsed,
-                &pwm_M1,
-                M1_DIR_PIN,
-                M1_PWM_PIN);
-      Serial.print("Desired\n");
-      Serial.print(desired_M1_v);
-      Serial.print("\n");
-      Serial.print("PWM\n");
-      Serial.print(M1_PWM_PIN);
-      Serial.print("\n");
-      
-
-      set_speed(&pid_vars_M2,
-                desired_M2_v,
-                sensed_M2_v,
-                &M2_v_cmd,
-                t_elapsed,
-                &pwm_M2,
-                M2_DIR_PIN,
-                M2_PWM_PIN);
-
-      set_speed(&pid_vars_MT,
-                desired_MT_v,
-                sensed_MT_v,
-                &MT_v_cmd,
-                t_elapsed,
-                &pwm_MT,
-                MT_DIR_PIN,
-                MT_PWM_PIN);
+//
+//      Serial.print("Desired\n");
+//      Serial.print(desired_M1_v);
+//      Serial.print("\n");
+//      Serial.print("PWM\n");
+//      Serial.print(M1_PWM_PIN);
+//      Serial.print("\n");
     }
 
     //analogWrite(MT_PWM_PIN, 50);
@@ -402,18 +422,21 @@ void loop() {
   /******************************************/
 
 /* read a byte from Serial. Perform appropriate action based on byte*/
-void read_serial() {
+
+// NOTE: this is going to be the callback
+void commandCallback(const hamr_test::HamrCommand& command_msg) {
+  // the HamrCommand msg is detailed as follows: 
+  // string type (the type that corresponds to the switch cases)
+  // string val (the value of the float)
+  
+  
   String str;
   float temp;
   float* sig_var;
-  char buffer[1];
+  char type = static_cast<char>(command_msg.type);
+  String val = command_msg.val;
 
-  buffer[0] = SIG_UNINITIALIZED;
-  if (Serial.available()) {
-    Serial.readBytes(buffer, 1);
-    Serial.print(buffer[0]);
-
-    switch (buffer[0]) {
+  switch (type) {
       case SIG_START_LOG:
         send_data = 1;
         break;
@@ -446,6 +469,7 @@ void read_serial() {
 
       // motor velocities
       case SIG_R_MOTOR:
+        digitalWrite(13, HIGH-digitalRead(13));
         sig_var = &desired_M1_v;
         break;
 
@@ -540,41 +564,37 @@ void read_serial() {
         sig_var = &(pid_vars_h_rdot.Kd);
         break;
     }
-
-    if (Serial.available()) {
-      *sig_var = Serial.readString().toFloat();
-      Serial.print(" "); Serial.print(*sig_var);
-
-      // uncomment below to test if correct signals are received
-      // Serial.print("signal received:"); Serial.println(buffer[0]);
-      // Serial.print("value received:"); Serial.println(*sig_var);
-    }
-
-  }
+      *sig_var = val.toFloat();
 }
 
 /* send relevant data through serial
   Everything in the if statement takes between 1200 and 1300 microseconds
   uncomment first and last line to test timing */
+  
 void send_serial() {
-    delayMicroseconds(500);
     leftMotor.position = decoder_count_M1;
     rightMotor.position = decoder_count_M2;
     turretMotor.position = decoder_count_MT;
-    leftMotor.velocity = sensed_M1_v;
-    rightMotor.velocity = sensed_M2_v;
-    turretMotor.velocity = sensed_MT_v;
+    // Arbitrary 1000 multiplied to ensure that we can send it over as an int. 
+    // Just think of it as mm/s 
+    // This should be fixed soon.
+    leftMotor.velocity = (int)(sensed_M1_v * 1000);
+    rightMotor.velocity = (int)(sensed_M2_v * 1000);
+    turretMotor.velocity = (int)(sensed_MT_v * 1000);
+    leftMotor.desired_velocity = (int)(desired_M1_v * 1000);
+    rightMotor.desired_velocity = (int)(desired_M2_v * 1000);
+    turretMotor.desired_velocity = (int)(desired_MT_v * 1000);
     hamrStatus.timestamp = nh.now();
     hamrStatus.left_motor = leftMotor;
     hamrStatus.right_motor = rightMotor;
     hamrStatus.turret_motor = turretMotor;
     pub.publish(&hamrStatus);
     nh.spinOnce();
-    delay(100);
+    
 }
 
 /******************************************/
-/* END SERIAL COMMUNCIATION CODE
+/* END SERIAL COMMUNICATION CODE
   /******************************************/
 
 
@@ -790,6 +810,8 @@ void test_I2C_decoder_count() {
 
 
 /* TEST FUNCTION. INSERT ALL TESTING IN HERE. make sure to comment these out while not testing, otherwise infinite loop */
+void read_serial();
+
 void test() {
   delayMicroseconds(1000000);
 

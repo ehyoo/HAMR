@@ -23,9 +23,10 @@ void set_speed(PID_Vars* pid,
   // float pid_output = pid->update_pid(speed_req, speed_act, t_elapsed);
   // *pwm_val = *pwm_val + round(255.0 * pid_output);
   // *pwm_val = constrain(*pwm_val, -255, 255); // limit PWM values
-  //*speed_cmd += pid->update_pid(speed_req, speed_act, t_elapsed);
-  *pwm_val = round((speed_req)*255.0);
-  //*pwm_val = round((*speed_cmd)*255.0);
+  *speed_cmd += pid->update_pid(speed_req, speed_act, t_elapsed);
+  
+  //*pwm_val = round((speed_req)*255.0);
+  *pwm_val = round((*speed_cmd)*255.0);
   *pwm_val = constrain(*pwm_val, -255, 255); // limit PWM values
 
   if (*pwm_val < 0) {

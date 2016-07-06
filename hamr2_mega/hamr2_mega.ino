@@ -61,9 +61,9 @@ float M2_v_cmd = 0;
 float MT_v_cmd = 0;
 
 /* CONTROL PARAMETERS */
-PID_Vars pid_vars_M1(0.18, 0.0, 0.002);
-PID_Vars pid_vars_M2(0.18, 0.0, 0.002);
-PID_Vars pid_vars_MT(0.002, 0.0, 0.00002);
+PID_Vars pid_vars_M1(0.0, 0.0, 0.0);
+PID_Vars pid_vars_M2(0.0, 0.0, 0.0);
+PID_Vars pid_vars_MT(0.0, 0.0, 0.0);
 PID_Vars dd_ctrl(0.1, 0.0, 0.0);
 
 // PID_Vars pid_vars_dd_v(1.0, 0.0, 0.0);
@@ -250,6 +250,8 @@ void zipper_path() {
 void compute_sensed_motor_velocities();
 void send_serial();
 
+int loop_time_duration;
+
 void loop() {
   int i = 0;
 
@@ -264,6 +266,8 @@ void loop() {
 
     //forward_test();
 
+    loop_time_duration = millis() - lastMilli;
+    
     if ((millis() - lastMilli) >= LOOPTIME) { //micros() - lastMicro()
       //serial communication
       //read_serial();
@@ -305,7 +309,7 @@ void loop() {
                 &pwm_MT,
                 MT_DIR_PIN,
                 MT_PWM_PIN);
-        digitalWrite(40, HIGH-digitalRead(40));
+        
       
       //      Serial.println(decoder_count_M1);
       //      diff = diff - decoder_count_M1;
@@ -362,7 +366,7 @@ void loop() {
 
       // Serial.println(desired_M1_v);
       
-      desired_MT_v *= 180.0 / PI;
+      //desired_MT_v *= 180.0 / PI;
 
       // desired_MT_v is
 
@@ -469,7 +473,7 @@ void commandCallback(const hamr_test::HamrCommand& command_msg) {
 
       // motor velocities
       case SIG_R_MOTOR:
-        digitalWrite(13, HIGH-digitalRead(13));
+        digitalWrite(40, HIGH-digitalRead(40));
         sig_var = &desired_M1_v;
         break;
 
@@ -478,6 +482,7 @@ void commandCallback(const hamr_test::HamrCommand& command_msg) {
         break;
 
       case SIG_T_MOTOR:
+        digitalWrite(40, HIGH-digitalRead(40));
         sig_var = &desired_MT_v;
         break;
 
@@ -572,22 +577,23 @@ void commandCallback(const hamr_test::HamrCommand& command_msg) {
   uncomment first and last line to test timing */
   
 void send_serial() {
-    leftMotor.position = decoder_count_M1;
-    rightMotor.position = decoder_count_M2;
+    leftMotor.position = decoder_count_M2;
+    rightMotor.position = decoder_count_M1;
     turretMotor.position = decoder_count_MT;
     // Arbitrary 1000 multiplied to ensure that we can send it over as an int. 
     // Just think of it as mm/s 
     // This should be fixed soon.
-    leftMotor.velocity = (int)(sensed_M1_v * 1000);
-    rightMotor.velocity = (int)(sensed_M2_v * 1000);
+    leftMotor.velocity = (int)(sensed_M2_v * 1000);
+    rightMotor.velocity = (int)(sensed_M1_v * 1000);
     turretMotor.velocity = (int)(sensed_MT_v * 1000);
-    leftMotor.desired_velocity = (int)(desired_M1_v * 1000);
-    rightMotor.desired_velocity = (int)(desired_M2_v * 1000);
+    leftMotor.desired_velocity = (int)(desired_M2_v * 1000);
+    rightMotor.desired_velocity = (int)(desired_M1_v * 1000);
     turretMotor.desired_velocity = (int)(desired_MT_v * 1000);
     hamrStatus.timestamp = nh.now();
     hamrStatus.left_motor = leftMotor;
     hamrStatus.right_motor = rightMotor;
     hamrStatus.turret_motor = turretMotor;
+    hamrStatus.looptime = loop_time_duration;
     pub.publish(&hamrStatus);
     nh.spinOnce();
     
@@ -633,8 +639,8 @@ void compute_sensed_motor_velocities() {
   // uses the libas library to read from pins
   // pins are CLK, DI, CSn- currently arbitrarily set to 1. 
   // TODO: CHANGE THESE PINS LATER
-  libas * libas_M1 = new libas(24, 26, 22, 12); 
-  libas * libas_M2 = new libas(30, 32, 28, 12); 
+  libas * libas_M1 = new libas(30, 32, 28, 12); 
+  libas * libas_M2 = new libas(24, 26, 22, 12); 
   libas * libas_MT = new libas(38, 34, 36, 10);
 
   decoder_count_M1 = libas_M1->GetPosition();

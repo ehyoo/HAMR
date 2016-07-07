@@ -16,13 +16,29 @@ void set_speed(PID_Vars* pid,
                int* pwm_val,
                int pin_driver_dir,
                int pin_pwm);
+
+void set_speed_of_left(PID_Vars* pid,
+               float speed_req, 
+               float speed_act,
+               float* speed_cmd,
+               float t_elapsed,
+               int* pwm_val);
                
 float get_speed(long encoder_counts,
                 float ticks_per_rev, 
                 float dist_per_rev, 
                 float time_elapsed);
+
+float get_speed_from_difference(long difference,
+                float ticks_per_rev, 
+                float dist_per_rev, 
+                float time_elapsed);
                
 float get_ang_speed(long encoder_counts,
+                    float ticks_per_rev,
+                    float time_elapsed);
+
+float get_ang_speed_from_difference(long difference,
                     float ticks_per_rev,
                     float time_elapsed);
 

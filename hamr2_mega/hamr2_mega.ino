@@ -84,7 +84,9 @@ int decoder_count_M1 = 0;
 int decoder_count_M2 = 0;
 int decoder_count_MT = 0;
 
-const int AVG_FILT_SZ = 5;
+const int AVG_FILT_SZ = 5; // this was originally 5
+
+
 float decoder_count_arr_M1[AVG_FILT_SZ];
 float decoder_count_arr_M2[AVG_FILT_SZ];
 float decoder_count_arr_MT[AVG_FILT_SZ];
@@ -292,14 +294,22 @@ void loop() {
                 M1_DIR_PIN,
                 M1_PWM_PIN);
 
-      set_speed(&pid_vars_M2,
+      // set_speed(&pid_vars_M2,
+      //           desired_M2_v,
+      //           sensed_M2_v,
+      //           &M2_v_cmd,
+      //           t_elapsed,
+      //           &pwm_M2,
+      //           M2_DIR_PIN,
+      //           M2_PWM_PIN);
+
+      // modified code for new motor driver
+      set_speed_of_left(&pid_vars_M2,
                 desired_M2_v,
                 sensed_M2_v,
                 &M2_v_cmd,
                 t_elapsed,
-                &pwm_M2,
-                M2_DIR_PIN,
-                M2_PWM_PIN);
+                &pwm_M2);
 
       set_speed(&pid_vars_MT,
                 desired_MT_v,
@@ -478,11 +488,11 @@ void commandCallback(const hamr_test::HamrCommand& command_msg) {
         break;
 
       case SIG_L_MOTOR:
+        
         sig_var = &desired_M2_v;
         break;
 
       case SIG_T_MOTOR:
-        digitalWrite(40, HIGH-digitalRead(40));
         sig_var = &desired_MT_v;
         break;
 
@@ -632,6 +642,10 @@ float compute_avg(float* arr, int sz) {
   return sum / (float) sz;
 }
 
+float prevSensedVelocityRight;
+float prevSensedVelocityLeft;
+float prevSensedVelocityTurret;
+
 void compute_sensed_motor_velocities() {
   // read decoders to get encoder counts
 
@@ -650,11 +664,37 @@ void compute_sensed_motor_velocities() {
   delete libas_M2;
   delete libas_MT;
   // =========
+
+  // in sudden jumps of encoder values: 
+  float decoder_count_change_M1;
+  float decoder_count_change_M2;
+  float decoder_count_change_MT;
+
+  // We could (and should) make this DRYer
+  if (decoder_count_M1_prev > 3500 && decoder_count_M1 < 500) {
+    decoder_count_change_M1 = 4095 - decoder_count_M1_prev + decoder_count_M1;
+  } else if (decoder_count_M1_prev < 500 && decoder_count_M1 > 3500) {
+    decoder_count_change_M1 = -1 * (4095 - decoder_count_M1 + decoder_count_M1_prev);
+  } else {
+    decoder_count_change_M1 = decoder_count_M1 - decoder_count_M1_prev;
+  }
+
+  if (decoder_count_M2_prev > 3500 && decoder_count_M2 < 500) {
+    decoder_count_change_M2 = 4095 - decoder_count_M2_prev + decoder_count_M2;
+  } else if (decoder_count_M2_prev < 500 && decoder_count_M2 > 3500) {
+    decoder_count_change_M2 = -1 * (4095 - decoder_count_M2 + decoder_count_M2_prev);
+  } else {
+    decoder_count_change_M2 = decoder_count_M2 - decoder_count_M2_prev;
+  }
   
-  // get change in decoder counts
-  float decoder_count_change_M1 = decoder_count_M1 - decoder_count_M1_prev;
-  float decoder_count_change_M2 = decoder_count_M2 - decoder_count_M2_prev;
-  float decoder_count_change_MT = decoder_count_MT - decoder_count_MT_prev;
+  if (decoder_count_MT_prev > 3500 && decoder_count_MT < 500) {
+    decoder_count_change_MT = 1023 - decoder_count_MT_prev + decoder_count_MT;
+  } else if (decoder_count_MT_prev < 500 && decoder_count_MT > 3500) {
+    decoder_count_change_MT = -1 * (1023 - decoder_count_MT + decoder_count_MT_prev);
+  } else {
+    decoder_count_change_MT = decoder_count_MT - decoder_count_MT_prev;
+  }
+  
 
   decoder_turret_total += decoder_count_MT - decoder_count_MT_prev;
 
@@ -687,10 +727,26 @@ void compute_sensed_motor_velocities() {
   sensed_M1_v = get_speed(decoder_count_change_filt_M1, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
   sensed_M2_v = get_speed(decoder_count_change_filt_M2, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
   sensed_MT_v = get_ang_speed(decoder_count_change_filt_MT, TICKS_PER_REV_TURRET, t_elapsed);
+
+// Low-pass Filter
+//  float currentVelRight = get_speed_from_difference(decoder_count_change_M1, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
+//  float currentVelLeft = get_speed_from_difference(decoder_count_change_M2, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
+//  float currentVelTurret = get_ang_speed_from_difference(decoder_count_change_MT, TICKS_PER_REV_TURRET, t_elapsed);
+//
+//  float beta = 0.6;
+  
+//  sensed_M1_v = beta * currentVelRight + (1 - beta) * prevSensedVelocityRight;
+//  sensed_M2_v = beta * currentVelLeft + (1 - beta) * prevSensedVelocityLeft;
+//  sensed_MT_v = beta * currentVelTurret + (1 - beta) * prevSensedVelocityTurret;
+
   // M1 and M2 returning m/s
   // sensed_MT_v returning degrees/s
 
+//  prevSensedVelocityRight = currentVelRight;
+//  prevSensedVelocityLeft = currentVelLeft;
+//  prevSensedVelocityTurret = currentVelTurret;
 
+  // a = beta * (encoderB) + (1 - beta) * encoderBOld (beta is <= 1)
 
   hamr_loc.update(sensed_M1_v, sensed_M2_v, WHEEL_DIST, t_elapsed);
 }

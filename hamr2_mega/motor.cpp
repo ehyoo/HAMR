@@ -23,9 +23,13 @@ void set_speed(PID_Vars* pid,
   // float pid_output = pid->update_pid(speed_req, speed_act, t_elapsed);
   // *pwm_val = *pwm_val + round(255.0 * pid_output);
   // *pwm_val = constrain(*pwm_val, -255, 255); // limit PWM values
-  *speed_cmd += pid->update_pid(speed_req, speed_act, t_elapsed);
+  
+  //THIS
+  // was +=
+  *speed_cmd = pid->update_pid(speed_req, speed_act, t_elapsed);
   
   //*pwm_val = round((speed_req)*255.0);
+  // AND THIS
   *pwm_val = round((*speed_cmd)*255.0);
   *pwm_val = constrain(*pwm_val, -255, 255); // limit PWM values
 
@@ -37,6 +41,41 @@ void set_speed(PID_Vars* pid,
     set_direction(pin_driver_dir, M1_FORWARD);
   }
   analogWrite(pin_pwm, abs(*pwm_val));
+} 
+
+
+// THIS IS A MODIFIED VERSION OF THE CODE ABOVE. 
+
+void set_speed_of_left(PID_Vars* pid,
+               float speed_req, 
+               float speed_act,
+               float* speed_cmd,
+               float t_elapsed,
+               int* pwm_val) {
+  int pwm = 2; // this is the pin_pwm variable
+  int IMA = 42; // 
+  int IMB = 44;
+  // increment speed_cmd with PID output (velocity control outputs change in speed)
+  // float pid_output = pid->update_pid(speed_req, speed_act, t_elapsed);
+  // *pwm_val = *pwm_val + round(255.0 * pid_output);
+  // *pwm_val = constrain(*pwm_val, -255, 255); // limit PWM values
+  *speed_cmd += pid->update_pid(speed_req, speed_act, t_elapsed);
+  
+  //*pwm_val = round((speed_req)*255.0);
+  *pwm_val = round((*speed_cmd)*255.0);
+  *pwm_val = constrain(*pwm_val, -255, 255); // limit PWM values
+
+  if (*pwm_val < 0) {
+    // Going reverse
+    digitalWrite(IMA, 0);
+    digitalWrite(IMB, 1);
+  } else {
+    // Going Forward
+    digitalWrite(IMA, 1);
+    digitalWrite(IMB, 0);
+  }
+  digitalWrite(pwm, 5);
+  //analogWrite(pwm, abs(*pwm_val));
 } 
 
 /*
@@ -57,8 +96,32 @@ float get_speed(long encoder_counts,
   Serial.print(ticks_per_rev,2);
   Serial.print(dist_per_rev,2);*/
 
+  // if big number > 4000, and small number is <100, then do this:
+
+  // otherwise do the original
+
   return ((((float) encoder_counts) / ticks_per_rev) * dist_per_rev) / (time_elapsed / 1000.0);
 }
+
+float get_speed_from_difference(long difference,
+                float ticks_per_rev, 
+                float dist_per_rev, 
+                float time_elapsed) {
+  // Calculating the speed using encoder count
+  /*Serial.print(encoder_counts);
+  Serial.print(time_elapsed,2);
+  Serial.print(ticks_per_rev,2);
+  Serial.print(dist_per_rev,2);*/
+
+  // if big number > 4000, and small number is <100, then do this:
+
+  // otherwise do the original
+
+  return ((((float) difference) / ticks_per_rev) * dist_per_rev) / (time_elapsed / 1000.0);
+}
+
+
+
 
 /*
  * Calculates angular speed from encoder counts over time
@@ -71,3 +134,8 @@ float get_ang_speed(long encoder_counts,
                     float ticks_per_rev,
                     float time_elapsed) {
   return 360 * (((float) encoder_counts) / ticks_per_rev) / (time_elapsed / 1000.0);}
+
+  float get_ang_speed_from_difference(long difference,
+                    float ticks_per_rev,
+                    float time_elapsed) {
+  return 360 * (((float) difference) / ticks_per_rev) / (time_elapsed / 1000.0);}

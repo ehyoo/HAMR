@@ -17,7 +17,7 @@
 #define WHEEL_RADIUS          (WHEEL_DIAMETER / 2.0)  // wheel radius, in meters
 #define WHEEL_DIST            0.328168                // distance between diff drive wheels, in meters (12.92')
 #define DIST_PER_REV          (PI*WHEEL_DIAMETER)     // circumference of wheel in meters
-#define LOOPTIME              20.0 // in ms
+#define LOOPTIME              10.0 // in ms
 
 // For live-plotting
 /* SIGNALS */
@@ -77,8 +77,8 @@
 // #define M1_SLP_PIN 45
 // #define M1_FLT_PIN 47
 
-#define M2_PWM_PIN 30
-#define M2_DIR_PIN 7
+#define M2_PWM_PIN 7
+#define M2_DIR_PIN 6
 // #define M2_SLP_PIN 51
 // #define M2_FLT_PIN 53
 

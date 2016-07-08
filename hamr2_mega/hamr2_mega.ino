@@ -61,8 +61,9 @@ float M2_v_cmd = 0;
 float MT_v_cmd = 0;
 
 /* CONTROL PARAMETERS */
-PID_Vars pid_vars_M1(0.0, 0.0, 0.0);
-PID_Vars pid_vars_M2(0.0, 0.0, 0.0);
+// PID Values are to be changed later- they work enough for now. 
+PID_Vars pid_vars_M1(0.6, 0.9, 0.0);
+PID_Vars pid_vars_M2(0.6, 0.9, 0.0);
 PID_Vars pid_vars_MT(0.0, 0.0, 0.0);
 PID_Vars dd_ctrl(0.1, 0.0, 0.0);
 
@@ -294,22 +295,22 @@ void loop() {
                 M1_DIR_PIN,
                 M1_PWM_PIN);
 
-      // set_speed(&pid_vars_M2,
-      //           desired_M2_v,
-      //           sensed_M2_v,
-      //           &M2_v_cmd,
-      //           t_elapsed,
-      //           &pwm_M2,
-      //           M2_DIR_PIN,
-      //           M2_PWM_PIN);
+       set_speed(&pid_vars_M2,
+                 desired_M2_v,
+                 sensed_M2_v,
+                 &M2_v_cmd,
+                 t_elapsed,
+                 &pwm_M2,
+                 M2_DIR_PIN,
+                 M2_PWM_PIN);
 
       // modified code for new motor driver
-      set_speed_of_left(&pid_vars_M2,
-                desired_M2_v,
-                sensed_M2_v,
-                &M2_v_cmd,
-                t_elapsed,
-                &pwm_M2);
+//      set_speed_of_left(&pid_vars_M2,
+//                desired_M2_v,
+//                sensed_M2_v,
+//                &M2_v_cmd,
+//                t_elapsed,
+//                &pwm_M2);
 
       set_speed(&pid_vars_MT,
                 desired_MT_v,
@@ -319,6 +320,15 @@ void loop() {
                 &pwm_MT,
                 MT_DIR_PIN,
                 MT_PWM_PIN);
+
+      // set_speed_of_turret(&pid_vars_MT,
+      //           desired_MT_v,
+      //           sensed_MT_v,
+      //           &MT_v_cmd,
+      //           t_elapsed,
+      //           &pwm_MT,
+      //           MT_DIR_PIN,
+      //           MT_PWM_PIN);
         
       
       //      Serial.println(decoder_count_M1);
@@ -595,7 +605,7 @@ void send_serial() {
     // This should be fixed soon.
     leftMotor.velocity = (int)(sensed_M2_v * 1000);
     rightMotor.velocity = (int)(sensed_M1_v * 1000);
-    turretMotor.velocity = (int)(sensed_MT_v * 1000);
+    turretMotor.velocity = (int)(sensed_MT_v * 100);
     leftMotor.desired_velocity = (int)(desired_M2_v * 1000);
     rightMotor.desired_velocity = (int)(desired_M1_v * 1000);
     turretMotor.desired_velocity = (int)(desired_MT_v * 1000);
@@ -686,10 +696,16 @@ void compute_sensed_motor_velocities() {
   } else {
     decoder_count_change_M2 = decoder_count_M2 - decoder_count_M2_prev;
   }
+
+  /* 
+  aggregateCount
+
+
+  */
   
-  if (decoder_count_MT_prev > 3500 && decoder_count_MT < 500) {
+  if (decoder_count_MT_prev > 800 && decoder_count_MT < 200) {
     decoder_count_change_MT = 1023 - decoder_count_MT_prev + decoder_count_MT;
-  } else if (decoder_count_MT_prev < 500 && decoder_count_MT > 3500) {
+  } else if (decoder_count_MT_prev < 200 && decoder_count_MT > 800) {
     decoder_count_change_MT = -1 * (1023 - decoder_count_MT + decoder_count_MT_prev);
   } else {
     decoder_count_change_MT = decoder_count_MT - decoder_count_MT_prev;

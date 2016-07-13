@@ -1,4 +1,4 @@
-#include <libas.h>
+ #include <libas.h>
 
 #include <Wire.h>
 
@@ -64,7 +64,8 @@ float MT_v_cmd = 0;
 // PID Values are to be changed later- they work enough for now. 
 PID_Vars pid_vars_M1(0.6, 0.9, 0.0);
 PID_Vars pid_vars_M2(0.6, 0.9, 0.0);
-PID_Vars pid_vars_MT(0.0, 0.0, 0.0);
+PID_Vars pid_vars_MT(0.0001, 0.0000, 0.0);
+//PID_Vars pid_vars_MT(0.0, 0.0, 0.0);
 PID_Vars dd_ctrl(0.1, 0.0, 0.0);
 
 // PID_Vars pid_vars_dd_v(1.0, 0.0, 0.0);
@@ -157,11 +158,17 @@ location hamr_loc;
 void init_actuators();
 void init_I2C();
 
+float pidError; // PID debugging for turret. See pid.h
+float dummy1;
+float dummy2;
+
 void setup() {
   nh.initNode(); // Initialize ros node
   nh.subscribe(sub); // arduino node subscribes to topic declared above
   nh.advertise(pub); // advertise the topic that will be published by the arduino
-
+   // Initial value for pidError
+  dummy1 = 0.0; // placeholders for PID errors
+  dummy2 = 0.0;
   pinMode(40, OUTPUT); // TESTING FOR BLINKING
   
   init_actuators();           // initialiaze all motors
@@ -293,7 +300,8 @@ void loop() {
                 t_elapsed,
                 &pwm_M1,
                 M1_DIR_PIN,
-                M1_PWM_PIN);
+                M1_PWM_PIN,
+                &dummy1);
 
        set_speed(&pid_vars_M2,
                  desired_M2_v,
@@ -302,7 +310,8 @@ void loop() {
                  t_elapsed,
                  &pwm_M2,
                  M2_DIR_PIN,
-                 M2_PWM_PIN);
+                 M2_PWM_PIN,
+                 &dummy2);
 
       // modified code for new motor driver
 //      set_speed_of_left(&pid_vars_M2,
@@ -311,7 +320,6 @@ void loop() {
 //                &M2_v_cmd,
 //                t_elapsed,
 //                &pwm_M2);
-
       set_speed(&pid_vars_MT,
                 desired_MT_v,
                 sensed_MT_v,
@@ -319,7 +327,8 @@ void loop() {
                 t_elapsed,
                 &pwm_MT,
                 MT_DIR_PIN,
-                MT_PWM_PIN);
+                MT_PWM_PIN,
+                &pidError);
 
       // set_speed_of_turret(&pid_vars_MT,
       //           desired_MT_v,
@@ -412,24 +421,25 @@ void loop() {
 
 
     // update_prevs();
+//
+//    if (next_sensor_time < micros() && is_imu_working()) {
+//      unsigned long current_micros = micros();
+//
+//      compute_imu((current_micros - prev_micros) / 1000000.0); //update imu with time change
+//
+//      sensed_drive_angle = get_current_angle() * PI / 180;
+//
+//      next_sensor_time = micros() + SENSOR_LOOPTIME;
+//      prev_micros = current_micros;
+//
+//      // potentially combine hamr_loc.theta with imu angle?
+//    } else if (!is_imu_working()) {
+//      sensed_drive_angle = hamr_loc.theta;
+//    }
 
-    if (next_sensor_time < micros() && is_imu_working()) {
-      unsigned long current_micros = micros();
-
-      compute_imu((current_micros - prev_micros) / 1000000.0); //update imu with time change
-
-      sensed_drive_angle = get_current_angle() * PI / 180;
-
-      next_sensor_time = micros() + SENSOR_LOOPTIME;
-      prev_micros = current_micros;
-
-      // potentially combine hamr_loc.theta with imu angle?
-    } else if (!is_imu_working()) {
-      sensed_drive_angle = hamr_loc.theta;
-    }
-
-    long ticks = TICKS_PER_REV_TURRET;
-    sensed_drive_angle = (decoder_turret_total % ticks) / (float) ticks;
+//    float ticks = TICKS_PER_REV_TURRET;
+//    sensed_drive_angle = fmod(decoder_turret_total, ticks) / (float) ticks;
+    
     // Serial.println(sensed_drive_angle);
 
     // unsigned long finish_time = micros();
@@ -452,8 +462,6 @@ void commandCallback(const hamr_test::HamrCommand& command_msg) {
   // the HamrCommand msg is detailed as follows: 
   // string type (the type that corresponds to the switch cases)
   // string val (the value of the float)
-  
-  
   String str;
   float temp;
   float* sig_var;
@@ -493,7 +501,6 @@ void commandCallback(const hamr_test::HamrCommand& command_msg) {
 
       // motor velocities
       case SIG_R_MOTOR:
-        digitalWrite(40, HIGH-digitalRead(40));
         sig_var = &desired_M1_v;
         break;
 
@@ -534,12 +541,12 @@ void commandCallback(const hamr_test::HamrCommand& command_msg) {
 
       // turret motor PID
       case SIG_T_KP:
-        sig_var = &(pid_vars_MT.Kd);
+        sig_var = &(pid_vars_MT.Kp);
         // sig_var = &(dd_ctrl.Kp);
         break;
 
       case SIG_T_KI:
-        sig_var = &(pid_vars_MT.Kd);
+        sig_var = &(pid_vars_MT.Ki);
         // sig_var = &(dd_ctrl.Ki);
         break;
 
@@ -609,6 +616,13 @@ void send_serial() {
     leftMotor.desired_velocity = (int)(desired_M2_v * 1000);
     rightMotor.desired_velocity = (int)(desired_M1_v * 1000);
     turretMotor.desired_velocity = (int)(desired_MT_v * 1000);
+    // These should be deleted later- these were put into messages purely for debugging
+    turretMotor.speed_cmd = (int)(roundf(MT_v_cmd * 100));
+    leftMotor.speed_cmd = 0;
+    rightMotor.speed_cmd = 0;
+    turretMotor.pidError = (int)(roundf(pidError * 100));
+    leftMotor.pidError = 0;
+    rightMotor.pidError = 0;
     hamrStatus.timestamp = nh.now();
     hamrStatus.left_motor = leftMotor;
     hamrStatus.right_motor = rightMotor;
@@ -669,7 +683,7 @@ void compute_sensed_motor_velocities() {
 
   decoder_count_M1 = libas_M1->GetPosition();
   decoder_count_M2 = libas_M2->GetPosition();
-  decoder_count_MT = libas_MT->GetPosition();
+  decoder_count_MT = libas_MT->GetPosition() * 4.0;
   delete libas_M1;
   delete libas_M2;
   delete libas_MT;
@@ -702,17 +716,24 @@ void compute_sensed_motor_velocities() {
 
 
   */
-  
-  if (decoder_count_MT_prev > 800 && decoder_count_MT < 200) {
-    decoder_count_change_MT = 1023 - decoder_count_MT_prev + decoder_count_MT;
-  } else if (decoder_count_MT_prev < 200 && decoder_count_MT > 800) {
-    decoder_count_change_MT = -1 * (1023 - decoder_count_MT + decoder_count_MT_prev);
+  if (decoder_count_MT_prev > 3500 && decoder_count_MT < 500) {
+    decoder_count_change_MT = 4095 - decoder_count_MT_prev + decoder_count_MT;
+  } else if (decoder_count_MT_prev < 500 && decoder_count_MT > 3500) {
+    decoder_count_change_MT = -1 * (4095 - decoder_count_MT + decoder_count_MT_prev);
   } else {
     decoder_count_change_MT = decoder_count_MT - decoder_count_MT_prev;
   }
+
+   // if (decoder_count_MT_prev > 700 && decoder_count_MT < 300) {
+   //   decoder_count_change_MT = 1023 - decoder_count_MT_prev + decoder_count_MT;
+   // } else if (decoder_count_MT_prev < 300 && decoder_count_MT > 700) {
+   //   decoder_count_change_MT = -1 * (1023 - decoder_count_MT + decoder_count_MT_prev);
+   // } else {
+   //   decoder_count_change_MT = decoder_count_MT - decoder_count_MT_prev;
+   // }
   
 
-  decoder_turret_total += decoder_count_MT - decoder_count_MT_prev;
+ // decoder_turret_total += decoder_count_MT - decoder_count_MT_prev;
 
   decoder_count_M1_prev = decoder_count_M1;
   decoder_count_M2_prev = decoder_count_M2;
@@ -742,7 +763,8 @@ void compute_sensed_motor_velocities() {
   // compute robot velocities
   sensed_M1_v = get_speed(decoder_count_change_filt_M1, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
   sensed_M2_v = get_speed(decoder_count_change_filt_M2, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
-  sensed_MT_v = get_ang_speed(decoder_count_change_filt_MT, TICKS_PER_REV_TURRET, t_elapsed);
+  sensed_MT_v = get_speed(decoder_count_change_filt_MT, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
+  //sensed_MT_v = get_ang_speed(decoder_count_change_filt_MT, TICKS_PER_REV_TURRET, t_elapsed);
 
 // Low-pass Filter
 //  float currentVelRight = get_speed_from_difference(decoder_count_change_M1, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);

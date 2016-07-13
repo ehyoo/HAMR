@@ -15,7 +15,8 @@ void set_speed(PID_Vars* pid,
                float t_elapsed, 
                int* pwm_val,
                int pin_driver_dir,
-               int pin_pwm);
+               int pin_pwm,
+               float* pidError);
 
 void set_speed_of_turret(PID_Vars* pid, 
                float speed_req, 

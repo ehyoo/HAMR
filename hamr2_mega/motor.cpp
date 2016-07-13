@@ -17,7 +17,8 @@ void set_speed(PID_Vars* pid,
                float t_elapsed,
                int* pwm_val,
                int pin_driver_dir, 
-               int pin_pwm) {
+               int pin_pwm, 
+               float* pidError) {
 
   // increment speed_cmd with PID output (velocity control outputs change in speed)
   // float pid_output = pid->update_pid(speed_req, speed_act, t_elapsed);
@@ -26,11 +27,12 @@ void set_speed(PID_Vars* pid,
   
   //THIS
   // was +=
-  //*speed_cmd = pid->update_pid(speed_req, speed_act, t_elapsed);
+  *speed_cmd = pid->update_pid(speed_req, speed_act, t_elapsed);
+  *pidError = speed_req - speed_act;
   
-  *pwm_val = round((speed_req)*255.0);
+  // *pwm_val = round((speed_req)*255.0);
   // AND THIS
-  //*pwm_val = round((*speed_cmd)*255.0);
+  *pwm_val = round((*speed_cmd)*255.0);
   *pwm_val = constrain(*pwm_val, -255, 255); // limit PWM values
 
   if (*pwm_val < 0) {
@@ -129,7 +131,8 @@ float get_speed_from_difference(long difference,
 float get_ang_speed(long encoder_counts,
                     float ticks_per_rev,
                     float time_elapsed) {
-  return 360 * (((float) encoder_counts) / ticks_per_rev) / (time_elapsed / 1000.0);}
+  // Getting turret: -1 because spinning opposite direction of encoder.
+  return 1 * 360 * (((float) encoder_counts) / ticks_per_rev) / (time_elapsed / 1000.0);}
 
   float get_ang_speed_from_difference(long difference,
                     float ticks_per_rev,

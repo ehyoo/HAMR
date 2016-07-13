@@ -26,7 +26,7 @@ typedef struct PID_Vars {
       error_acc += error * (time_elapsed/1000.0);
       error_acc = constrain((error_acc), -1*error_acc_limit, error_acc_limit); // Anti integrator windup using clamping
 
-      pidTerm = (Kp * error) + (Kd * (error - error_prev) / (time_elapsed/1000.0)) + (Ki * (error_acc));      
+      pidTerm = (Kp * error); // + (Kd * (error - error_prev) / (time_elapsed/1000.0)) + (Ki * (error_acc));      
     /*
       Serial.print("P: ");
       Serial.print((Kp * error),3);
@@ -38,7 +38,7 @@ typedef struct PID_Vars {
     */
     
 
-     
+     digitalWrite(40, HIGH-digitalRead(40));
       error_prev = error; // update error
       
       return pidTerm;

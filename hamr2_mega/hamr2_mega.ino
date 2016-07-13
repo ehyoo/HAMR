@@ -1,4 +1,4 @@
- #include <libas.h>
+#include <libas.h>
 
 #include <Wire.h>
 
@@ -62,10 +62,9 @@ float MT_v_cmd = 0;
 
 /* CONTROL PARAMETERS */
 // PID Values are to be changed later- they work enough for now. 
-PID_Vars pid_vars_M1(0.6, 0.9, 0.0);
-PID_Vars pid_vars_M2(0.6, 0.9, 0.0);
-PID_Vars pid_vars_MT(0.0001, 0.0000, 0.0);
-//PID_Vars pid_vars_MT(0.0, 0.0, 0.0);
+PID_Vars pid_vars_M1(0.6, 10.0, 0.005);
+PID_Vars pid_vars_M2(0.6, 10.0, 0.005);
+PID_Vars pid_vars_MT(0.006, 0.1, 0.0);
 PID_Vars dd_ctrl(0.1, 0.0, 0.0);
 
 // PID_Vars pid_vars_dd_v(1.0, 0.0, 0.0);
@@ -91,7 +90,7 @@ const int AVG_FILT_SZ = 5; // this was originally 5
 
 float decoder_count_arr_M1[AVG_FILT_SZ];
 float decoder_count_arr_M2[AVG_FILT_SZ];
-float decoder_count_arr_MT[AVG_FILT_SZ];
+float decoder_count_arr_MT[10];
 
 int decoder_count_M1_prev = 0;
 int decoder_count_M2_prev = 0;
@@ -615,7 +614,7 @@ void send_serial() {
     turretMotor.velocity = (int)(sensed_MT_v * 100);
     leftMotor.desired_velocity = (int)(desired_M2_v * 1000);
     rightMotor.desired_velocity = (int)(desired_M1_v * 1000);
-    turretMotor.desired_velocity = (int)(desired_MT_v * 1000);
+    turretMotor.desired_velocity = (int)(desired_MT_v * 100);
     // These should be deleted later- these were put into messages purely for debugging
     turretMotor.speed_cmd = (int)(roundf(MT_v_cmd * 100));
     leftMotor.speed_cmd = 0;
@@ -683,7 +682,7 @@ void compute_sensed_motor_velocities() {
 
   decoder_count_M1 = libas_M1->GetPosition();
   decoder_count_M2 = libas_M2->GetPosition();
-  decoder_count_MT = libas_MT->GetPosition() * 4.0;
+  decoder_count_MT = libas_MT->GetPosition();
   delete libas_M1;
   delete libas_M2;
   delete libas_MT;
@@ -716,21 +715,21 @@ void compute_sensed_motor_velocities() {
 
 
   */
-  if (decoder_count_MT_prev > 3500 && decoder_count_MT < 500) {
-    decoder_count_change_MT = 4095 - decoder_count_MT_prev + decoder_count_MT;
-  } else if (decoder_count_MT_prev < 500 && decoder_count_MT > 3500) {
-    decoder_count_change_MT = -1 * (4095 - decoder_count_MT + decoder_count_MT_prev);
-  } else {
-    decoder_count_change_MT = decoder_count_MT - decoder_count_MT_prev;
-  }
+//  if (decoder_count_MT_prev > 3500 && decoder_count_MT < 500) {
+//    decoder_count_change_MT = 4095 - decoder_count_MT_prev + decoder_count_MT;
+//  } else if (decoder_count_MT_prev < 500 && decoder_count_MT > 3500) {
+//    decoder_count_change_MT = -1 * (4095 - decoder_count_MT + decoder_count_MT_prev);
+//  } else {
+//    decoder_count_change_MT = decoder_count_MT - decoder_count_MT_prev;
+//  }
 
-   // if (decoder_count_MT_prev > 700 && decoder_count_MT < 300) {
-   //   decoder_count_change_MT = 1023 - decoder_count_MT_prev + decoder_count_MT;
-   // } else if (decoder_count_MT_prev < 300 && decoder_count_MT > 700) {
-   //   decoder_count_change_MT = -1 * (1023 - decoder_count_MT + decoder_count_MT_prev);
-   // } else {
-   //   decoder_count_change_MT = decoder_count_MT - decoder_count_MT_prev;
-   // }
+    if (decoder_count_MT_prev > 700 && decoder_count_MT < 300) {
+      decoder_count_change_MT = 1023 - decoder_count_MT_prev + decoder_count_MT;
+    } else if (decoder_count_MT_prev < 300 && decoder_count_MT > 700) {
+      decoder_count_change_MT = -1 * (1023 - decoder_count_MT + decoder_count_MT_prev);
+    } else {
+      decoder_count_change_MT = decoder_count_MT - decoder_count_MT_prev;
+    }
   
 
  // decoder_turret_total += decoder_count_MT - decoder_count_MT_prev;
@@ -751,38 +750,41 @@ void compute_sensed_motor_velocities() {
   for (int i = 1; i < AVG_FILT_SZ; i++) {
     decoder_count_arr_M1[i] = decoder_count_arr_M1[i - 1];
     decoder_count_arr_M2[i] = decoder_count_arr_M2[i - 1];
-    decoder_count_arr_MT[i] = decoder_count_arr_MT[i - 1];
+    
   }
+//  for (int j = 1; j < 10; j++) {
+//    decoder_count_arr_MT[j] = decoder_count_arr_MT[j - 1];
+//  }
   decoder_count_arr_M1[0] = decoder_count_change_M1;
   decoder_count_arr_M2[0] = decoder_count_change_M2;
-  decoder_count_arr_MT[0] = decoder_count_change_MT;
+//  decoder_count_arr_MT[0] = decoder_count_change_MT;
   float decoder_count_change_filt_M1 = compute_avg(decoder_count_arr_M1, AVG_FILT_SZ);
   float decoder_count_change_filt_M2 = compute_avg(decoder_count_arr_M2, AVG_FILT_SZ);
-  float decoder_count_change_filt_MT = compute_avg(decoder_count_arr_MT, AVG_FILT_SZ);
+//  float decoder_count_change_filt_MT = compute_avg(decoder_count_arr_MT, AVG_FILT_SZ);
 
   // compute robot velocities
   sensed_M1_v = get_speed(decoder_count_change_filt_M1, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
   sensed_M2_v = get_speed(decoder_count_change_filt_M2, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
-  sensed_MT_v = get_speed(decoder_count_change_filt_MT, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
-  //sensed_MT_v = get_ang_speed(decoder_count_change_filt_MT, TICKS_PER_REV_TURRET, t_elapsed);
+//  sensed_MT_v = get_speed(decoder_count_change_filt_MT, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
+//  sensed_MT_v = get_ang_speed(decoder_count_change_filt_MT, TICKS_PER_REV_TURRET, t_elapsed);
 
 // Low-pass Filter
 //  float currentVelRight = get_speed_from_difference(decoder_count_change_M1, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
 //  float currentVelLeft = get_speed_from_difference(decoder_count_change_M2, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
-//  float currentVelTurret = get_ang_speed_from_difference(decoder_count_change_MT, TICKS_PER_REV_TURRET, t_elapsed);
+  float currentVelTurret = get_ang_speed_from_difference(decoder_count_change_MT, TICKS_PER_REV_TURRET, t_elapsed);
 //
-//  float beta = 0.6;
+  float beta = 0.6;
   
 //  sensed_M1_v = beta * currentVelRight + (1 - beta) * prevSensedVelocityRight;
 //  sensed_M2_v = beta * currentVelLeft + (1 - beta) * prevSensedVelocityLeft;
-//  sensed_MT_v = beta * currentVelTurret + (1 - beta) * prevSensedVelocityTurret;
+  sensed_MT_v = beta * currentVelTurret + (1 - beta) * prevSensedVelocityTurret;
 
   // M1 and M2 returning m/s
   // sensed_MT_v returning degrees/s
 
 //  prevSensedVelocityRight = currentVelRight;
 //  prevSensedVelocityLeft = currentVelLeft;
-//  prevSensedVelocityTurret = currentVelTurret;
+  prevSensedVelocityTurret = currentVelTurret;
 
   // a = beta * (encoderB) + (1 - beta) * encoderBOld (beta is <= 1)
 

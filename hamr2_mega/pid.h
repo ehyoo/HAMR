@@ -36,9 +36,6 @@ typedef struct PID_Vars {
       Serial.print((Ki * (error_acc)),3);
       Serial.print("\n");
     */
-    
-
-     digitalWrite(40, HIGH-digitalRead(40));
       error_prev = error; // update error
       
       return pidTerm;

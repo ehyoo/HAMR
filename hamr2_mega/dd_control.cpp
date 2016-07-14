@@ -11,16 +11,17 @@ void angle_control(PID_Vars* pid, float dtheta_req, float dtheta_act, float* dth
                    float* M1_speed, float* M2_speed, float wheel_dist, float wheel_rad, float t) {  
   // USE FOR CONTROLLER INPUT: maps [-1,1]->[-PI,PI] rads
   float pid_output = pid->update_pid(dtheta_req * PI, dtheta_act, t); 
-  *dtheta_cmd += pid_output;
+  *dtheta_cmd = pid_output;
   // Control law
   // Determine speeds for each indiv motor to achieve angle at speed
   float ang_speed = (wheel_dist/2.0) * (*dtheta_cmd);
   if (dtheta_req == 0.0) {
     // Remove any turning if not input in
-    *M1_speed = speed_req;
+    *M1_speed = -1 * speed_req;
     *M2_speed = speed_req;
   } else {
-    *M1_speed = speed_req - ang_speed;
+    //digitalWrite(40, HIGH-digitalRead(40));
+    *M1_speed = -1 * (speed_req - ang_speed);
     *M2_speed = speed_req + ang_speed;
   }
 }

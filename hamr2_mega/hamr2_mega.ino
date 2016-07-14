@@ -344,19 +344,19 @@ void loop() {
       //      Serial.println(diff);
 
       // DIFFERENTIAL DRIVE CONTROL
-      // int use_dd_control = 0;
-      // if (use_dd_control == 0) {
-      //   // PID velocity control, same input to both motors
-      //   desired_M1_v = desired_dd_v;
-      //   desired_M2_v = desired_dd_v;
-      // } else if (use_dd_control == 1) {
-      //   // Differential drive control
-      //   angle_control(&dd_ctrl, desired_dd_r, hamr_loc.w, &dtheta_cmd, desired_dd_v, &desired_M1_v, &desired_M2_v, WHEEL_DIST, WHEEL_RADIUS, t_elapsed);
-      // } else {
-      //   // use indiv setpoints
-      //   desired_M1_v = (desired_dd_v - (WHEEL_DIST/2.0) * PI/2.0);
-      //   desired_M2_v = (desired_dd_v + (WHEEL_DIST/2.0) * PI/2.0);
-      // }
+       int use_dd_control = 1;
+       if (use_dd_control == 0) {
+         // PID velocity control, same input to both motors
+         desired_M1_v = -1 * desired_dd_v;
+         desired_M2_v = desired_dd_v;
+       } else if (use_dd_control == 1) {
+         // Differential drive control
+         angle_control(&dd_ctrl, desired_dd_r, hamr_loc.w, &dtheta_cmd, desired_dd_v, &desired_M1_v, &desired_M2_v, WHEEL_DIST, WHEEL_RADIUS, t_elapsed);
+       } else {
+        // use indiv setpoints
+        desired_M1_v = -1 * (desired_dd_v - (WHEEL_DIST/2.0) * PI/2.0);
+        desired_M2_v = (desired_dd_v + (WHEEL_DIST/2.0) * PI/2.0);
+       }
 
       //M1 is the RIGHT motor and is forward facing caster wheels
       //M2 is LEFT
@@ -540,18 +540,18 @@ void commandCallback(const hamr_test::HamrCommand& command_msg) {
 
       // turret motor PID
       case SIG_T_KP:
-        sig_var = &(pid_vars_MT.Kp);
-        // sig_var = &(dd_ctrl.Kp);
+//        sig_var = &(pid_vars_MT.Kp);
+         sig_var = &(dd_ctrl.Kp);
         break;
 
       case SIG_T_KI:
-        sig_var = &(pid_vars_MT.Ki);
-        // sig_var = &(dd_ctrl.Ki);
+//        sig_var = &(pid_vars_MT.Ki);
+         sig_var = &(dd_ctrl.Ki);
         break;
 
       case SIG_T_KD:
-        sig_var = &(pid_vars_MT.Kd);
-        // sig_var = &(dd_ctrl.Kd);
+//        sig_var = &(pid_vars_MT.Kd);
+         sig_var = &(dd_ctrl.Kd);
         break;
 
       // holonomic X PID

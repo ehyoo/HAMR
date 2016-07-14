@@ -177,21 +177,31 @@ void setup() {
   startMilli = millis(); //startMicro = micros()
 }
 
+unsigned long startTestTime;
+bool squareTestDidStart = false;
+bool timerSet = false;
+
 /*SQUARE VIDEO TEST*/
 void square_vid_test() {
-    if(millis() < startMilli + 4000){
+    if (millis() < startTestTime + 3000) {
+      desired_h_xdot = 0.0;
+      desired_h_ydot = 0.0;
+    }
+    else if(millis() < startTestTime + 6000){
       desired_h_xdot = -.2;
       desired_h_ydot = 0;
-    } else if(millis() < startMilli + 4000){
+    } else if(millis() < startTestTime + 9000){
       desired_h_xdot = 0;
       desired_h_ydot = -.2;
-    } else if(millis() < startMilli + 6000){
+    } else if(millis() < startTestTime + 12000){
       desired_h_xdot = .2;
       desired_h_ydot = 0;
-    } else if(millis() < startMilli + 8000){
+    } else if(millis() < startTestTime + 15000){
       desired_h_xdot = 0;
       desired_h_ydot = .2;
     } else {
+      squareTestDidStart = false;
+      timerSet = false;
       desired_h_xdot = 0;
       desired_h_ydot = 0;
     }
@@ -292,6 +302,20 @@ void loop() {
 
       send_serial();
 
+      if (squareTestDidStart) {
+        digitalWrite(40, HIGH);
+      } else {
+        digitalWrite(40, LOW);
+      }
+
+    if (squareTestDidStart) {
+      square_vid_test();
+      if (!timerSet) {
+        startTestTime = millis();
+        timerSet = true;
+      }  
+    }
+
       set_speed(&pid_vars_M1,
                 desired_M1_v,
                 sensed_M1_v,
@@ -364,23 +388,23 @@ void loop() {
       /* *********************** */
       /* BEGIN HOLONOMIC CONTROL */
       // compute xdot, ydot, and theta dot using the sensed motor velocties and drive angle
-//      compute_global_state(sensed_M1_v, sensed_M2_v, sensed_MT_v, 2*PI*sensed_drive_angle,
-//                           &computed_xdot, &computed_ydot, &computed_tdot);
+      compute_global_state(sensed_M1_v, sensed_M2_v, sensed_MT_v, 2*PI*sensed_drive_angle,
+                           &computed_xdot, &computed_ydot, &computed_tdot);
 //      //
-//      h_xdot_cmd = desired_h_xdot;
-//      h_ydot_cmd = desired_h_ydot;
-//      h_rdot_cmd = desired_h_rdot;
+      h_xdot_cmd = desired_h_xdot;
+      h_ydot_cmd = desired_h_ydot;
+      h_rdot_cmd = desired_h_rdot;
 
       // UNCOMMENT THE FOLLOWING LINE TO ENABLE HOLONOMIC PID
       // holonomic PID
-      // h_xdot_cmd += pid_vars_h_xdot->update_pid(desired_h_xdot, computed_xdot, t_elapsed);
-      // h_ydot_cmd += pid_vars_h_ydot->update_pid(desired_h_ydot, computed ydot, t_elapsed);
-      // h_rdot_cmd += pid_vars_h_rdot->update_pid(desired_h_rdot, computed_tdot * 180 / PI, t_elapsed);
+//       h_xdot_cmd = pid_vars_h_xdot.update_pid(desired_h_xdot, computed_xdot, t_elapsed);
+//       h_ydot_cmd = pid_vars_h_ydot.update_pid(desired_h_ydot, computed_ydot, t_elapsed);
+//       h_rdot_cmd = pid_vars_h_rdot.update_pid(desired_h_rdot, computed_tdot * 180 / PI, t_elapsed);
 
 //      // using output of holonomic PID, compute jacobian values for motor inputs
-//            set_holonomic_desired_velocities(h_xdot_cmd, h_ydot_cmd, h_rdot_cmd); // set these setpoints to the output of the holonomic PID controllers
+            set_holonomic_desired_velocities(h_xdot_cmd, h_ydot_cmd, h_rdot_cmd); // set these setpoints to the output of the holonomic PID controllers
 //            get_holonomic_motor_velocities(sensed_drive_angle, &desired_M1_v, &desired_M2_v, &desired_MT_v);
-//            get_holonomic_motor_velocities(hamr_loc.theta, &desired_M1_v, &desired_M2_v, &desired_MT_v);
+            get_holonomic_motor_velocities(hamr_loc.theta, &desired_M1_v, &desired_M2_v, &desired_MT_v);
       //
       // Serial.print(hamr_loc.w);  Serial.print(" ");
       // Serial.println(computed_tdot);
@@ -394,7 +418,7 @@ void loop() {
 
       // Serial.println(desired_M1_v);
       
-      //desired_MT_v *= 180.0 / PI;
+      desired_MT_v *= 180.0 / PI;
 
       // desired_MT_v is
 
@@ -436,13 +460,17 @@ void loop() {
 //      sensed_drive_angle = hamr_loc.theta;
 //    }
 
-//    float ticks = TICKS_PER_REV_TURRET;
-//    sensed_drive_angle = fmod(decoder_turret_total, ticks) / (float) ticks;
+    float ticks = TICKS_PER_REV_TURRET;
+    sensed_drive_angle = fmod(decoder_turret_total, ticks) / (float) ticks;
     
     // Serial.println(sensed_drive_angle);
 
     // unsigned long finish_time = micros();
     // Serial.print("total_time: "); Serial.println(finish_time - start_time);
+    // Test Loop
+
+
+    //square_vid_test();
   }
 }
 
@@ -504,7 +532,6 @@ void commandCallback(const hamr_test::HamrCommand& command_msg) {
         break;
 
       case SIG_L_MOTOR:
-        
         sig_var = &desired_M2_v;
         break;
 
@@ -593,6 +620,10 @@ void commandCallback(const hamr_test::HamrCommand& command_msg) {
 
       case SIG_HOLO_R_KD:
         sig_var = &(pid_vars_h_rdot.Kd);
+        break;
+      // Tests on command
+      case -100:
+        squareTestDidStart = true;
         break;
     }
       *sig_var = val.toFloat();
@@ -732,7 +763,7 @@ void compute_sensed_motor_velocities() {
     }
   
 
- // decoder_turret_total += decoder_count_MT - decoder_count_MT_prev;
+  decoder_turret_total += decoder_count_MT - decoder_count_MT_prev;
 
   decoder_count_M1_prev = decoder_count_M1;
   decoder_count_M2_prev = decoder_count_M2;
@@ -747,43 +778,43 @@ void compute_sensed_motor_velocities() {
 //  Serial.print("\n");
 
   // Moving average filter on decoder count differences
-  for (int i = 1; i < AVG_FILT_SZ; i++) {
-    decoder_count_arr_M1[i] = decoder_count_arr_M1[i - 1];
-    decoder_count_arr_M2[i] = decoder_count_arr_M2[i - 1];
-    
-  }
+//  for (int i = 1; i < AVG_FILT_SZ; i++) {
+//    decoder_count_arr_M1[i] = decoder_count_arr_M1[i - 1];
+//    decoder_count_arr_M2[i] = decoder_count_arr_M2[i - 1];
+//    
+//  }
 //  for (int j = 1; j < 10; j++) {
 //    decoder_count_arr_MT[j] = decoder_count_arr_MT[j - 1];
 //  }
-  decoder_count_arr_M1[0] = decoder_count_change_M1;
-  decoder_count_arr_M2[0] = decoder_count_change_M2;
+//  decoder_count_arr_M1[0] = decoder_count_change_M1;
+//  decoder_count_arr_M2[0] = decoder_count_change_M2;
 //  decoder_count_arr_MT[0] = decoder_count_change_MT;
-  float decoder_count_change_filt_M1 = compute_avg(decoder_count_arr_M1, AVG_FILT_SZ);
-  float decoder_count_change_filt_M2 = compute_avg(decoder_count_arr_M2, AVG_FILT_SZ);
+//  float decoder_count_change_filt_M1 = compute_avg(decoder_count_arr_M1, AVG_FILT_SZ);
+//  float decoder_count_change_filt_M2 = compute_avg(decoder_count_arr_M2, AVG_FILT_SZ);
 //  float decoder_count_change_filt_MT = compute_avg(decoder_count_arr_MT, AVG_FILT_SZ);
 
   // compute robot velocities
-  sensed_M1_v = get_speed(decoder_count_change_filt_M1, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
-  sensed_M2_v = get_speed(decoder_count_change_filt_M2, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
+//  sensed_M1_v = get_speed(decoder_count_change_filt_M1, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
+//  sensed_M2_v = get_speed(decoder_count_change_filt_M2, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
 //  sensed_MT_v = get_speed(decoder_count_change_filt_MT, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
 //  sensed_MT_v = get_ang_speed(decoder_count_change_filt_MT, TICKS_PER_REV_TURRET, t_elapsed);
 
 // Low-pass Filter
-//  float currentVelRight = get_speed_from_difference(decoder_count_change_M1, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
-//  float currentVelLeft = get_speed_from_difference(decoder_count_change_M2, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
+  float currentVelRight = get_speed_from_difference(decoder_count_change_M1, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
+  float currentVelLeft = get_speed_from_difference(decoder_count_change_M2, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
   float currentVelTurret = get_ang_speed_from_difference(decoder_count_change_MT, TICKS_PER_REV_TURRET, t_elapsed);
 //
-  float beta = 0.6;
+  float beta = 1; //0.386;
   
-//  sensed_M1_v = beta * currentVelRight + (1 - beta) * prevSensedVelocityRight;
-//  sensed_M2_v = beta * currentVelLeft + (1 - beta) * prevSensedVelocityLeft;
+  sensed_M1_v = beta * currentVelRight + (1 - beta) * prevSensedVelocityRight;
+  sensed_M2_v = beta * currentVelLeft + (1 - beta) * prevSensedVelocityLeft;
   sensed_MT_v = beta * currentVelTurret + (1 - beta) * prevSensedVelocityTurret;
 
   // M1 and M2 returning m/s
   // sensed_MT_v returning degrees/s
 
-//  prevSensedVelocityRight = currentVelRight;
-//  prevSensedVelocityLeft = currentVelLeft;
+  prevSensedVelocityRight = currentVelRight;
+  prevSensedVelocityLeft = currentVelLeft;
   prevSensedVelocityTurret = currentVelTurret;
 
   // a = beta * (encoderB) + (1 - beta) * encoderBOld (beta is <= 1)

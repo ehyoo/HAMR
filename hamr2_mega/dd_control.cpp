@@ -20,7 +20,7 @@ void angle_control(PID_Vars* pid, float dtheta_req, float dtheta_act, float* dth
     *M1_speed = -1 * speed_req;
     *M2_speed = speed_req;
   } else {
-    //digitalWrite(40, HIGH-digitalRead(40));
+    //
     *M1_speed = -1 * (speed_req - ang_speed);
     *M2_speed = speed_req + ang_speed;
   }

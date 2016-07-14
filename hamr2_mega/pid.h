@@ -9,12 +9,14 @@ typedef struct PID_Vars {
   float Kd;
   float error_acc;
   float error_prev; 
+  float prevErrorDif;
   PID_Vars(float Kp_in, float Ki_in, float Kd_in) {
     Kp = Kp_in;
     Ki = Ki_in;
     Kd = Kd_in;
     error_acc = 0.0;
     error_prev = 0.0;
+    prevErrorDif = 0.0;
   }
 
   float update_pid(float targetValue, float currentValue, float time_elapsed) {
@@ -26,7 +28,14 @@ typedef struct PID_Vars {
       error_acc += error * (time_elapsed/1000.0);
       error_acc = constrain((error_acc), -1*error_acc_limit, error_acc_limit); // Anti integrator windup using clamping
 
-      pidTerm = (Kp * error) + (Kd * (error - error_prev) / (time_elapsed/1000.0)) + (Ki * (error_acc));      
+      float errorDif = error - error_prev;
+
+      // Low Pass Filter
+      // float beta = 0.5;
+      // float filteredDifference = beta * errorDif + (1 - beta) * prevErrorDif;
+
+      //pidTerm = (Kp * error) + (Kd * (filteredDifference) / (time_elapsed/1000.0)) + (Ki * (error_acc));      
+      pidTerm = (Kp * error) + (Kd * (errorDif) / (time_elapsed/1000.0)) + (Ki * (error_acc));
     /*
       Serial.print("P: ");
       Serial.print((Kp * error),3);
@@ -37,6 +46,7 @@ typedef struct PID_Vars {
       Serial.print("\n");
     */
       error_prev = error; // update error
+      prevErrorDif = errorDif;
       
       return pidTerm;
     }

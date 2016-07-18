@@ -35,9 +35,9 @@ void set_speed(PID_Vars* pid,
   *pwm_val = round((*speed_cmd)*255.0);
   *pwm_val = constrain(*pwm_val, -255, 255); // limit PWM values
 
-  if (abs(*pwm_val) < 10) {
-    *pwm_val = 0.0;
-  }
+   if (abs(*pwm_val) < 5) {
+     *pwm_val = 0.0;
+   }
   
   if (*pwm_val < 0) {
     // reverse direction

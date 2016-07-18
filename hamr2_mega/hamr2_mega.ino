@@ -15,15 +15,18 @@
 #include <hamr_test/HamrStatus.h>
 #include <hamr_test/MotorStatus.h>
 #include <hamr_test/HamrCommand.h>
+#include <hamr_test/HoloStatus.h>
 #include <ros/time.h>
 ros::NodeHandle nh;
 
 // Publishing
-hamr_test::HamrStatus hamrStatus;
-hamr_test::MotorStatus leftMotor;
-hamr_test::MotorStatus rightMotor;
-hamr_test::MotorStatus turretMotor;
-ros::Publisher pub("hamr_state", &hamrStatus);
+//hamr_test::HamrStatus hamrStatus;
+//hamr_test::MotorStatus leftMotor;
+//hamr_test::MotorStatus rightMotor;
+//hamr_test::MotorStatus turretMotor;
+//ros::Publisher pub("hamr_state", &hamrStatus);
+hamr_test::HoloStatus holoStatus;
+ros::Publisher pub("holo_state", &holoStatus);
 
 // Subscribing
   // TODO: Make a separate message for commands? 
@@ -162,6 +165,7 @@ float dummy1;
 float dummy2;
 
 void setup() {
+  //  delay(3000);
   nh.initNode(); // Initialize ros node
   nh.subscribe(sub); // arduino node subscribes to topic declared above
   nh.advertise(pub); // advertise the topic that will be published by the arduino
@@ -179,6 +183,7 @@ void setup() {
 
 unsigned long startTestTime;
 bool squareTestDidStart = false;
+bool rightTestDidStart = false;
 bool timerSet = false;
 
 /*SQUARE VIDEO TEST*/
@@ -220,15 +225,17 @@ void forward_test() {
 
 /*RIGHT ANGLE VIDEO TEST*/
 void right_angle_vid_test() {
-    if(millis() < startMilli + 6000){
+    if(millis() < startTestTime + 6000){
       desired_h_xdot = 0;
       desired_h_ydot = .2;
-    } else if(millis() < startMilli + 12000){
+    } else if(millis() < startTestTime + 12000){
       desired_h_xdot = -.2;
       desired_h_ydot = 0;
     } else {
       desired_h_xdot = 0;
       desired_h_ydot = 0;
+      rightTestDidStart = false;
+      timerSet = false;
     }
 }
 
@@ -314,7 +321,57 @@ void loop() {
         startTestTime = millis();
         timerSet = true;
       }  
+    } else if (rightTestDidStart) {
+      right_angle_vid_test();
+      if (!timerSet) {
+        startTestTime = millis();
+        timerSet = true;
+      }
     }
+
+//       DIFFERENTIAL DRIVE CONTROL
+//       int use_dd_control = 1;
+//       if (use_dd_control == 0) {
+//         // PID velocity control, same input to both motors
+//         desired_M1_v = -1 * desired_dd_v;
+//         desired_M2_v = desired_dd_v;
+//       } else if (use_dd_control == 1) {
+//         // Differential drive control
+//         angle_control(&dd_ctrl, desired_dd_r, hamr_loc.w, &dtheta_cmd, desired_dd_v, &desired_M1_v, &desired_M2_v, WHEEL_DIST, WHEEL_RADIUS, t_elapsed);
+//       } else {
+//        // use indiv setpoints
+//        desired_M1_v = -1 * (desired_dd_v - (WHEEL_DIST/2.0) * PI/2.0);
+//        desired_M2_v = (desired_dd_v + (WHEEL_DIST/2.0) * PI/2.0);
+//       }
+
+      //M1 is the RIGHT motor and is forward facing caster wheels
+      //M2 is LEFT
+
+      /* *********************** */
+      /* BEGIN HOLONOMIC CONTROL */
+      // compute xdot, ydot, and theta dot using the sensed motor velocties and drive angle
+
+      // AND THIS 
+      compute_global_state(-1 * sensed_M1_v, sensed_M2_v, -1 * sensed_MT_v, 2*PI*sensed_drive_angle,
+                           &computed_xdot, &computed_ydot, &computed_tdot);
+//      //
+        h_xdot_cmd = desired_h_xdot;
+        h_ydot_cmd = desired_h_ydot;
+        h_rdot_cmd = desired_h_rdot;
+      // // 
+
+      // UNCOMMENT THE FOLLOWING LINE TO ENABLE HOLONOMIC PID
+      // holonomic PID
+//       h_xdot_cmd = pid_vars_h_xdot.update_pid(desired_h_xdot, computed_xdot, t_elapsed);
+//       h_ydot_cmd = pid_vars_h_ydot.update_pid(desired_h_ydot, computed_ydot, t_elapsed);
+//       h_rdot_cmd = pid_vars_h_rdot.update_pid(desired_h_rdot, computed_tdot * 180 / PI, t_elapsed);
+
+//PUT THIS BACK IN
+      // using output of holonomic PID, compute jacobian values for motor inputs
+            set_holonomic_desired_velocities(h_xdot_cmd, h_ydot_cmd, h_rdot_cmd); // set these setpoints to the output of the holonomic PID controllers
+            get_holonomic_motor_velocities(sensed_drive_angle * 2 * PI, &desired_M1_v, &desired_M2_v, &desired_MT_v);
+//            get_holonomic_motor_velocities(hamr_loc.theta, &desired_M1_v, &desired_M2_v, &desired_MT_v);
+
 
       set_speed(&pid_vars_M1,
                 desired_M1_v,
@@ -367,44 +424,10 @@ void loop() {
       //      diff = diff - decoder_count_M1;
       //      Serial.println(diff);
 
-      // DIFFERENTIAL DRIVE CONTROL
-       int use_dd_control = 1;
-       if (use_dd_control == 0) {
-         // PID velocity control, same input to both motors
-         desired_M1_v = -1 * desired_dd_v;
-         desired_M2_v = desired_dd_v;
-       } else if (use_dd_control == 1) {
-         // Differential drive control
-         angle_control(&dd_ctrl, desired_dd_r, hamr_loc.w, &dtheta_cmd, desired_dd_v, &desired_M1_v, &desired_M2_v, WHEEL_DIST, WHEEL_RADIUS, t_elapsed);
-       } else {
-        // use indiv setpoints
-        desired_M1_v = -1 * (desired_dd_v - (WHEEL_DIST/2.0) * PI/2.0);
-        desired_M2_v = (desired_dd_v + (WHEEL_DIST/2.0) * PI/2.0);
-       }
 
-      //M1 is the RIGHT motor and is forward facing caster wheels
-      //M2 is LEFT
 
-      /* *********************** */
-      /* BEGIN HOLONOMIC CONTROL */
-      // compute xdot, ydot, and theta dot using the sensed motor velocties and drive angle
-      compute_global_state(sensed_M1_v, sensed_M2_v, sensed_MT_v, 2*PI*sensed_drive_angle,
-                           &computed_xdot, &computed_ydot, &computed_tdot);
-//      //
-      h_xdot_cmd = desired_h_xdot;
-      h_ydot_cmd = desired_h_ydot;
-      h_rdot_cmd = desired_h_rdot;
 
-      // UNCOMMENT THE FOLLOWING LINE TO ENABLE HOLONOMIC PID
-      // holonomic PID
-//       h_xdot_cmd = pid_vars_h_xdot.update_pid(desired_h_xdot, computed_xdot, t_elapsed);
-//       h_ydot_cmd = pid_vars_h_ydot.update_pid(desired_h_ydot, computed_ydot, t_elapsed);
-//       h_rdot_cmd = pid_vars_h_rdot.update_pid(desired_h_rdot, computed_tdot * 180 / PI, t_elapsed);
-
-//      // using output of holonomic PID, compute jacobian values for motor inputs
-            set_holonomic_desired_velocities(h_xdot_cmd, h_ydot_cmd, h_rdot_cmd); // set these setpoints to the output of the holonomic PID controllers
-//            get_holonomic_motor_velocities(sensed_drive_angle, &desired_M1_v, &desired_M2_v, &desired_MT_v);
-            get_holonomic_motor_velocities(hamr_loc.theta, &desired_M1_v, &desired_M2_v, &desired_MT_v);
+            
       //
       // Serial.print(hamr_loc.w);  Serial.print(" ");
       // Serial.println(computed_tdot);
@@ -462,7 +485,10 @@ void loop() {
 
     float ticks = TICKS_PER_REV_TURRET;
     sensed_drive_angle = fmod(decoder_turret_total, ticks) / (float) ticks;
-    
+    if (sensed_drive_angle < 0) {
+      sensed_drive_angle = 1 + sensed_drive_angle;
+    } 
+    sensed_drive_angle = 1 - sensed_drive_angle;
     // Serial.println(sensed_drive_angle);
 
     // unsigned long finish_time = micros();
@@ -625,6 +651,9 @@ void commandCallback(const hamr_test::HamrCommand& command_msg) {
       case -100:
         squareTestDidStart = true;
         break;
+      case -101:
+        rightTestDidStart = true;
+        break;
     }
       *sig_var = val.toFloat();
 }
@@ -634,31 +663,41 @@ void commandCallback(const hamr_test::HamrCommand& command_msg) {
   uncomment first and last line to test timing */
   
 void send_serial() {
-    leftMotor.position = decoder_count_M2;
-    rightMotor.position = decoder_count_M1;
-    turretMotor.position = decoder_count_MT;
-    // Arbitrary 1000 multiplied to ensure that we can send it over as an int. 
-    // Just think of it as mm/s 
-    // This should be fixed soon.
-    leftMotor.velocity = (int)(sensed_M2_v * 1000);
-    rightMotor.velocity = (int)(sensed_M1_v * 1000);
-    turretMotor.velocity = (int)(sensed_MT_v * 100);
-    leftMotor.desired_velocity = (int)(desired_M2_v * 1000);
-    rightMotor.desired_velocity = (int)(desired_M1_v * 1000);
-    turretMotor.desired_velocity = (int)(desired_MT_v * 100);
-    // These should be deleted later- these were put into messages purely for debugging
-    turretMotor.speed_cmd = (int)(roundf(MT_v_cmd * 100));
-    leftMotor.speed_cmd = 0;
-    rightMotor.speed_cmd = 0;
-    turretMotor.pidError = (int)(roundf(pidError * 100));
-    leftMotor.pidError = 0;
-    rightMotor.pidError = 0;
-    hamrStatus.timestamp = nh.now();
-    hamrStatus.left_motor = leftMotor;
-    hamrStatus.right_motor = rightMotor;
-    hamrStatus.turret_motor = turretMotor;
-    hamrStatus.looptime = loop_time_duration;
-    pub.publish(&hamrStatus);
+//    leftMotor.position = decoder_count_M2;
+//    rightMotor.position = decoder_count_M1;
+//    turretMotor.position = decoder_count_MT;
+//    // Arbitrary 1000 multiplied to ensure that we can send it over as an int. 
+//    // Just think of it as mm/s 
+//    // This should be fixed soon.
+//    leftMotor.velocity = (int)(sensed_M2_v * 1000);
+//    rightMotor.velocity = (int)(sensed_M1_v * 1000);
+//    turretMotor.velocity = (int)(sensed_MT_v * 100);
+//    leftMotor.desired_velocity = (int)(desired_M2_v * 1000);
+//    rightMotor.desired_velocity = (int)(desired_M1_v * 1000);
+//    turretMotor.desired_velocity = (int)(desired_MT_v * 100);
+//    // These should be deleted later- these were put into messages purely for debugging
+//    turretMotor.speed_cmd = (int)(roundf(MT_v_cmd * 100));
+//    leftMotor.speed_cmd = 0;
+//    rightMotor.speed_cmd = 0;
+//    turretMotor.pidError = (int)(roundf(pidError * 100));
+//    leftMotor.pidError = 0;
+//    rightMotor.pidError = 0;
+//    hamrStatus.timestamp = nh.now();
+//    hamrStatus.left_motor = leftMotor;
+//    hamrStatus.right_motor = rightMotor;
+//    hamrStatus.turret_motor = turretMotor;
+//    hamrStatus.looptime = loop_time_duration;
+    holoStatus.setpoint_x =  (int)(h_xdot_cmd * 1000);
+    holoStatus.setpoint_y = (int)(h_ydot_cmd * 1000);
+    holoStatus.setpoint_r = (int)(h_rdot_cmd * 1000);
+    holoStatus.xdot = (int)(computed_xdot*1000);
+    holoStatus.ydot = (int)(computed_ydot*1000);
+    holoStatus.tdot = (int)(computed_tdot*100);
+    holoStatus.left_vel = (int)(sensed_M2_v * 1000);
+    holoStatus.right_vel = (int)(sensed_M1_v * 1000);
+    holoStatus.turret_vel = (int)(sensed_MT_v * 100);
+    holoStatus.sensed_drive_angle = (int)(sensed_drive_angle*360);
+    pub.publish(&holoStatus);
     nh.spinOnce();
     
 }
@@ -761,9 +800,9 @@ void compute_sensed_motor_velocities() {
     } else {
       decoder_count_change_MT = decoder_count_MT - decoder_count_MT_prev;
     }
-  
 
-  decoder_turret_total += decoder_count_MT - decoder_count_MT_prev;
+
+  decoder_turret_total += decoder_count_change_MT;
 
   decoder_count_M1_prev = decoder_count_M1;
   decoder_count_M2_prev = decoder_count_M2;
@@ -804,7 +843,7 @@ void compute_sensed_motor_velocities() {
   float currentVelLeft = get_speed_from_difference(decoder_count_change_M2, TICKS_PER_REV_DDRIVE, DIST_PER_REV, t_elapsed);
   float currentVelTurret = get_ang_speed_from_difference(decoder_count_change_MT, TICKS_PER_REV_TURRET, t_elapsed);
 //
-  float beta = 1; //0.386;
+  float beta = 0.6; //0.386;
   
   sensed_M1_v = beta * currentVelRight + (1 - beta) * prevSensedVelocityRight;
   sensed_M2_v = beta * currentVelLeft + (1 - beta) * prevSensedVelocityLeft;

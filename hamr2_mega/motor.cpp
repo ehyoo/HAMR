@@ -31,6 +31,9 @@ void set_speed(PID_Vars* pid,
   *pidError = speed_req - speed_act;
   
   // *pwm_val = round((speed_req)*255.0);
+  
+  
+  
   // AND THIS
   *pwm_val = round((*speed_cmd)*255.0);
   *pwm_val = constrain(*pwm_val, -255, 255); // limit PWM values
@@ -69,7 +72,7 @@ void set_speed_of_turret(PID_Vars* pid,
   
   //THIS
   // was +=
-  *speed_cmd = pid->update_pid(speed_req, speed_act, t_elapsed);
+  *speed_cmd = -1*pid->update_pid(speed_req, speed_act, t_elapsed);
   *pidError = speed_req - speed_act;
   
   // *pwm_val = round((speed_req)*255.0);

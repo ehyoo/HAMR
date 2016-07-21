@@ -182,7 +182,7 @@ void setup() {
   init_actuators();           // initialiaze all motors
   init_I2C();                 // initialize I2C bus as master
 
-  delay(2500);
+  // delay(2500);
   startMilli = millis(); //startMicro = micros()
 }
 
@@ -288,6 +288,7 @@ bool didSetOffset = false;
 void loop() {
   int i = 0;
 
+  
   while (1) {
     // last timing was between 900 and 1200 microseconds. the range seems high...
     // uncomment the first and last line in while loop to test timing
@@ -405,26 +406,8 @@ void loop() {
                  M2_DIR_PIN,
                  M2_PWM_PIN,
                  &dummy2);
-
-      // modified code for new motor driver
-//      set_speed_of_left(&pid_vars_M2,
-//                desired_M2_v,
-//                sensed_M2_v,
-//                &M2_v_cmd,
-//                t_elapsed,
-//                &pwm_M2);
-
-      set_speed(&pid_vars_MT,
-                desired_MT_v,
-                sensed_MT_v,
-                &MT_v_cmd,
-                t_elapsed,
-                &pwm_MT,
-                MT_DIR_PIN,
-                MT_PWM_PIN,
-                &pidError);
-//
-//      set_speed_of_turret(&pid_vars_MT,
+//                 
+//      set_speed(&pid_vars_MT,
 //                desired_MT_v,
 //                sensed_MT_v,
 //                &MT_v_cmd,
@@ -433,7 +416,17 @@ void loop() {
 //                MT_DIR_PIN,
 //                MT_PWM_PIN,
 //                &pidError);
-//        
+//
+      set_speed_of_turret(&pid_vars_MT,
+                desired_MT_v,
+                sensed_MT_v,
+                &MT_v_cmd,
+                t_elapsed,
+                &pwm_MT,
+                MT_DIR_PIN,
+                MT_PWM_PIN,
+                &pidError);
+        
       
       //      Serial.println(decoder_count_M1);
       //      diff = diff - decoder_count_M1;
@@ -737,6 +730,8 @@ void send_serial() {
     velStatus.sensed_t_motor_velocity = (int) (((float(turret_tick_change)/1023))/(t_elapsed/1000) * 1000);
     velStatus.sensed_turret_position = (int) (360 * sensed_drive_angle);
     velStatus.sensed_turret_velocity = (int) (sensed_MT_v * 100);
+    velStatus.desired_turret_velocity = (int) (desired_MT_v * 100);
+    velStatus.pid_error = (int)(roundf(pidError * 100));  
     pub.publish(&velStatus);
     
     nh.spinOnce();

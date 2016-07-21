@@ -107,7 +107,7 @@ void compute_ramsis_jacobian(float desired_xdot, float desired_ydot, float desir
 	output_m2 = (desired_xdot*(-b_sin + a_cos) + desired_ydot*(b_cos + a_sin)) / (DIM_B);
 	// Then output as degrees. 
   // i am crying on the inside
-	output_mt = (180/PI) * ((-desired_xdot * cost - desired_ydot * sint) / DIM_B - desired_tdot);
+	output_mt = (180/PI) * ((-desired_xdot * cost - desired_ydot * sint) / DIM_B + desired_tdot);
 }
 
 void set_holonomic_desired_velocities(float xdot, float ydot, float rdot) {

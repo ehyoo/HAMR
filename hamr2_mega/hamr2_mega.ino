@@ -16,6 +16,7 @@
 #include <hamr_test/MotorStatus.h>
 #include <hamr_test/HamrCommand.h>
 #include <hamr_test/HoloStatus.h>
+#include <hamr_test/VelocityStatus.h>
 #include <ros/time.h>
 ros::NodeHandle nh;
 
@@ -25,9 +26,13 @@ ros::NodeHandle nh;
 //hamr_test::MotorStatus rightMotor;
 //hamr_test::MotorStatus turretMotor;
 //ros::Publisher pub("hamr_state", &hamrStatus);
-hamr_test::HoloStatus holoStatus;
-ros::Publisher pub("holo_state", &holoStatus);
 
+//hamr_test::HoloStatus holoStatus;
+//ros::Publisher pub("holo_state", &holoStatus);
+
+hamr_test::VelocityStatus velStatus;
+ros::Publisher pub("vel_state", &velStatus);
+  
 // Subscribing
   // TODO: Make a separate message for commands? 
   // Or we can just continue to use the HamrStatus message and do validations on
@@ -277,6 +282,8 @@ void compute_sensed_motor_velocities();
 void send_serial();
 
 int loop_time_duration;
+int offset = 0;
+bool didSetOffset = false;
 
 void loop() {
   int i = 0;
@@ -331,7 +338,7 @@ void loop() {
 
 //       DIFFERENTIAL DRIVE CONTROL
 //       int use_dd_control = 1;
-//       if (use_dd_control == 0) {
+//       isensed_drive_anglef (use_dd_control == 0) {
 //         // PID velocity control, same input to both motors
 //         desired_M1_v = -1 * desired_dd_v;
 //         desired_M2_v = desired_dd_v;
@@ -351,13 +358,19 @@ void loop() {
       /* BEGIN HOLONOMIC CONTROL */
       // compute xdot, ydot, and theta dot using the sensed motor velocties and drive angle
 
+
       // AND THIS 
-      compute_global_state(-1 * sensed_M1_v, sensed_M2_v, -1 * sensed_MT_v, 2*PI*sensed_drive_angle,
-                           &computed_xdot, &computed_ydot, &computed_tdot);
-//      //
-        h_xdot_cmd = desired_h_xdot;
-        h_ydot_cmd = desired_h_ydot;
-        h_rdot_cmd = desired_h_rdot;
+        /*
+        STEP 1: CONVERT MOTOR VELOCITY TO ACTUAL TURRET VELOCITY
+        
+        */
+      
+//      compute_global_state(-1 * sensed_M1_v, sensed_M2_v, sensed_MT_v, 2*PI*sensed_drive_angle,
+//                           &computed_xdot, &computed_ydot, &computed_tdot);
+////      //
+//        h_xdot_cmd = desired_h_xdot;
+//        h_ydot_cmd = desired_h_ydot;
+//        h_rdot_cmd = desired_h_rdot;
       // // 
 
       // UNCOMMENT THE FOLLOWING LINE TO ENABLE HOLONOMIC PID
@@ -368,8 +381,8 @@ void loop() {
 
 //PUT THIS BACK IN
       // using output of holonomic PID, compute jacobian values for motor inputs
-            set_holonomic_desired_velocities(h_xdot_cmd, h_ydot_cmd, h_rdot_cmd); // set these setpoints to the output of the holonomic PID controllers
-            get_holonomic_motor_velocities(sensed_drive_angle * 2 * PI, &desired_M1_v, &desired_M2_v, &desired_MT_v);
+//            set_holonomic_desired_velocities(h_xdot_cmd, h_ydot_cmd, h_rdot_cmd); // set these setpoints to the output of the holonomic PID controllers
+//            get_holonomic_motor_velocities(sensed_drive_angle * 2 * PI, &desired_M1_v, &desired_M2_v, &desired_MT_v);
 //            get_holonomic_motor_velocities(hamr_loc.theta, &desired_M1_v, &desired_M2_v, &desired_MT_v);
 
 
@@ -400,6 +413,7 @@ void loop() {
 //                &M2_v_cmd,
 //                t_elapsed,
 //                &pwm_M2);
+
       set_speed(&pid_vars_MT,
                 desired_MT_v,
                 sensed_MT_v,
@@ -409,16 +423,17 @@ void loop() {
                 MT_DIR_PIN,
                 MT_PWM_PIN,
                 &pidError);
-
-      // set_speed_of_turret(&pid_vars_MT,
-      //           desired_MT_v,
-      //           sensed_MT_v,
-      //           &MT_v_cmd,
-      //           t_elapsed,
-      //           &pwm_MT,
-      //           MT_DIR_PIN,
-      //           MT_PWM_PIN);
-        
+//
+//      set_speed_of_turret(&pid_vars_MT,
+//                desired_MT_v,
+//                sensed_MT_v,
+//                &MT_v_cmd,
+//                t_elapsed,
+//                &pwm_MT,
+//                MT_DIR_PIN,
+//                MT_PWM_PIN,
+//                &pidError);
+//        
       
       //      Serial.println(decoder_count_M1);
       //      diff = diff - decoder_count_M1;
@@ -441,7 +456,7 @@ void loop() {
 
       // Serial.println(desired_M1_v);
       
-      desired_MT_v *= 180.0 / PI;
+      //desired_MT_v *= 180.0 / PI;
 
       // desired_MT_v is
 
@@ -488,7 +503,17 @@ void loop() {
     if (sensed_drive_angle < 0) {
       sensed_drive_angle = 1 + sensed_drive_angle;
     } 
-    sensed_drive_angle = 1 - sensed_drive_angle;
+
+    if (!didSetOffset) {
+      offset = sensed_drive_angle;
+      didSetOffset = true;
+    }
+    sensed_drive_angle = sensed_drive_angle - offset;
+    
+    //sensed_drive_angle = 1 - sensed_drive_angle;
+
+
+    
     // Serial.println(sensed_drive_angle);
 
     // unsigned long finish_time = micros();
@@ -661,6 +686,8 @@ void commandCallback(const hamr_test::HamrCommand& command_msg) {
 /* send relevant data through serial
   Everything in the if statement takes between 1200 and 1300 microseconds
   uncomment first and last line to test timing */
+
+  int turret_tick_change; // For debugging purposes for sending through serial- you should delete this later
   
 void send_serial() {
 //    leftMotor.position = decoder_count_M2;
@@ -687,17 +714,31 @@ void send_serial() {
 //    hamrStatus.right_motor = rightMotor;
 //    hamrStatus.turret_motor = turretMotor;
 //    hamrStatus.looptime = loop_time_duration;
-    holoStatus.setpoint_x =  (int)(h_xdot_cmd * 1000);
-    holoStatus.setpoint_y = (int)(h_ydot_cmd * 1000);
-    holoStatus.setpoint_r = (int)(h_rdot_cmd * 1000);
-    holoStatus.xdot = (int)(computed_xdot*1000);
-    holoStatus.ydot = (int)(computed_ydot*1000);
-    holoStatus.tdot = (int)(computed_tdot*100);
-    holoStatus.left_vel = (int)(sensed_M2_v * 1000);
-    holoStatus.right_vel = (int)(sensed_M1_v * 1000);
-    holoStatus.turret_vel = (int)(sensed_MT_v * 100);
-    holoStatus.sensed_drive_angle = (int)(sensed_drive_angle*360);
-    pub.publish(&holoStatus);
+//    pub.publish(&hamrStatus);
+
+//    holoStatus.setpoint_x =  (int)(h_xdot_cmd * 1000);
+//    holoStatus.setpoint_y = (int)(h_ydot_cmd * 1000);
+//    holoStatus.setpoint_r = (int)(h_rdot_cmd * 1000);
+//    holoStatus.xdot = (int)(computed_xdot*1000);
+//    holoStatus.ydot = (int)(computed_ydot*1000);
+//    holoStatus.tdot = (int)(computed_tdot*100);
+//    holoStatus.left_vel = (int)(sensed_M2_v * 1000);
+//    holoStatus.right_vel = (int)(sensed_M1_v * 1000);
+//    holoStatus.turret_vel = (int)(sensed_MT_v * 100);
+//    holoStatus.desired_left_vel = (int) (desired_M2_v * 1000);
+//    holoStatus.desired_right_vel = (int) (desired_M1_v * 1000);
+//    holoStatus.desired_turret_vel = (int) (desired_MT_v * 100);
+//    holoStatus.sensed_drive_angle = (int)(sensed_drive_angle*360);
+//    pub.publish(&holoStatus);
+
+
+    // turret velocity debugging things
+    velStatus.sensed_t_motor_enc_value = decoder_count_MT;
+    velStatus.sensed_t_motor_velocity = (int) (((float(turret_tick_change)/1023))/(t_elapsed/1000) * 1000);
+    velStatus.sensed_turret_position = (int) (360 * sensed_drive_angle);
+    velStatus.sensed_turret_velocity = (int) (sensed_MT_v * 100);
+    pub.publish(&velStatus);
+    
     nh.spinOnce();
     
 }
@@ -746,6 +787,9 @@ void compute_sensed_motor_velocities() {
   // uses the libas library to read from pins
   // pins are CLK, DI, CSn- currently arbitrarily set to 1. 
   // TODO: CHANGE THESE PINS LATER
+
+
+  // DUDE CHANGE THIS.
   libas * libas_M1 = new libas(30, 32, 28, 12); 
   libas * libas_M2 = new libas(24, 26, 22, 12); 
   libas * libas_MT = new libas(38, 34, 36, 10);
@@ -793,6 +837,7 @@ void compute_sensed_motor_velocities() {
 //    decoder_count_change_MT = decoder_count_MT - decoder_count_MT_prev;
 //  }
 
+    //decoder_count_MT = 1023 - decoder_count_MT;
     if (decoder_count_MT_prev > 700 && decoder_count_MT < 300) {
       decoder_count_change_MT = 1023 - decoder_count_MT_prev + decoder_count_MT;
     } else if (decoder_count_MT_prev < 300 && decoder_count_MT > 700) {
@@ -800,9 +845,10 @@ void compute_sensed_motor_velocities() {
     } else {
       decoder_count_change_MT = decoder_count_MT - decoder_count_MT_prev;
     }
+   turret_tick_change = decoder_count_change_MT;
 
 
-  decoder_turret_total += decoder_count_change_MT;
+  decoder_turret_total -= decoder_count_change_MT;
 
   decoder_count_M1_prev = decoder_count_M1;
   decoder_count_M2_prev = decoder_count_M2;

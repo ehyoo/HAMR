@@ -107,7 +107,12 @@ void compute_ramsis_jacobian(float desired_xdot, float desired_ydot, float desir
 	output_m2 = (desired_xdot*(-b_sin + a_cos) + desired_ydot*(b_cos + a_sin)) / (DIM_B);
 	// Then output as degrees. 
   // i am crying on the inside
-	output_mt = (180/PI) * ((-desired_xdot * cost - desired_ydot * sint) / DIM_B + desired_tdot);
+
+//  Isolated Y works correctly, then X moves in correct direction but angles are flipped (90 at -x and 270 at +x) but reorients itself when sending y command
+//	output_mt = (180/PI) * ((-desired_xdot * cost - desired_ydot * sint) / DIM_B + desired_tdot);
+
+// Isolated Y works correctly, X angles are correct but moves in wrong direction and still flips itself around. Does not reorient itself after sending y command.
+    output_mt = (180/PI) * ((desired_xdot * cost - desired_ydot * sint) / DIM_B + desired_tdot);
 }
 
 void set_holonomic_desired_velocities(float xdot, float ydot, float rdot) {

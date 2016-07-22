@@ -27,11 +27,11 @@ ros::NodeHandle nh;
 //hamr_test::MotorStatus turretMotor;
 //ros::Publisher pub("hamr_state", &hamrStatus);
 
-//hamr_test::HoloStatus holoStatus;
-//ros::Publisher pub("holo_state", &holoStatus);
+hamr_test::HoloStatus holoStatus;
+ros::Publisher pub("holo_state", &holoStatus);
 
-hamr_test::VelocityStatus velStatus;
-ros::Publisher pub("vel_state", &velStatus);
+//hamr_test::VelocityStatus velStatus;
+//ros::Publisher pub("vel_state", &velStatus);
   
 // Subscribing
   // TODO: Make a separate message for commands? 
@@ -366,12 +366,12 @@ void loop() {
         
         */
       
-//      compute_global_state(-1 * sensed_M1_v, sensed_M2_v, sensed_MT_v, 2*PI*sensed_drive_angle,
-//                           &computed_xdot, &computed_ydot, &computed_tdot);
+      compute_global_state(-1 * sensed_M1_v, sensed_M2_v, sensed_MT_v, 2*PI*sensed_drive_angle,
+                           &computed_xdot, &computed_ydot, &computed_tdot);
 ////      //
-//        h_xdot_cmd = desired_h_xdot;
-//        h_ydot_cmd = desired_h_ydot;
-//        h_rdot_cmd = desired_h_rdot;
+        h_xdot_cmd = desired_h_xdot;
+        h_ydot_cmd = desired_h_ydot;
+        h_rdot_cmd = desired_h_rdot;
       // // 
 
       // UNCOMMENT THE FOLLOWING LINE TO ENABLE HOLONOMIC PID
@@ -382,8 +382,8 @@ void loop() {
 
 //PUT THIS BACK IN
       // using output of holonomic PID, compute jacobian values for motor inputs
-//            set_holonomic_desired_velocities(h_xdot_cmd, h_ydot_cmd, h_rdot_cmd); // set these setpoints to the output of the holonomic PID controllers
-//            get_holonomic_motor_velocities(sensed_drive_angle * 2 * PI, &desired_M1_v, &desired_M2_v, &desired_MT_v);
+            set_holonomic_desired_velocities(h_xdot_cmd, h_ydot_cmd, h_rdot_cmd); // set these setpoints to the output of the holonomic PID controllers
+            get_holonomic_motor_velocities(sensed_drive_angle * 2 * PI, &desired_M1_v, &desired_M2_v, &desired_MT_v);
 //            get_holonomic_motor_velocities(hamr_loc.theta, &desired_M1_v, &desired_M2_v, &desired_MT_v);
 
 
@@ -709,30 +709,30 @@ void send_serial() {
 //    hamrStatus.looptime = loop_time_duration;
 //    pub.publish(&hamrStatus);
 
-//    holoStatus.setpoint_x =  (int)(h_xdot_cmd * 1000);
-//    holoStatus.setpoint_y = (int)(h_ydot_cmd * 1000);
-//    holoStatus.setpoint_r = (int)(h_rdot_cmd * 1000);
-//    holoStatus.xdot = (int)(computed_xdot*1000);
-//    holoStatus.ydot = (int)(computed_ydot*1000);
-//    holoStatus.tdot = (int)(computed_tdot*100);
-//    holoStatus.left_vel = (int)(sensed_M2_v * 1000);
-//    holoStatus.right_vel = (int)(sensed_M1_v * 1000);
-//    holoStatus.turret_vel = (int)(sensed_MT_v * 100);
-//    holoStatus.desired_left_vel = (int) (desired_M2_v * 1000);
-//    holoStatus.desired_right_vel = (int) (desired_M1_v * 1000);
-//    holoStatus.desired_turret_vel = (int) (desired_MT_v * 100);
-//    holoStatus.sensed_drive_angle = (int)(sensed_drive_angle*360);
-//    pub.publish(&holoStatus);
+    holoStatus.setpoint_x =  (int)(h_xdot_cmd * 1000);
+    holoStatus.setpoint_y = (int)(h_ydot_cmd * 1000);
+    holoStatus.setpoint_r = (int)(h_rdot_cmd * 1000);
+    holoStatus.xdot = (int)(computed_xdot*1000);
+    holoStatus.ydot = (int)(computed_ydot*1000);
+    holoStatus.tdot = (int)(computed_tdot*100);
+    holoStatus.left_vel = (int)(sensed_M2_v * 1000);
+    holoStatus.right_vel = (int)(sensed_M1_v * 1000);
+    holoStatus.turret_vel = (int)(sensed_MT_v * 100);
+    holoStatus.desired_left_vel = (int) (desired_M2_v * 1000);
+    holoStatus.desired_right_vel = (int) (desired_M1_v * 1000);
+    holoStatus.desired_turret_vel = (int) (desired_MT_v * 100);
+    holoStatus.sensed_drive_angle = (int)(sensed_drive_angle*360);
+    pub.publish(&holoStatus);
 
 
     // turret velocity debugging things
-    velStatus.sensed_t_motor_enc_value = decoder_count_MT;
-    velStatus.sensed_t_motor_velocity = (int) (((float(turret_tick_change)/1023))/(t_elapsed/1000) * 1000);
-    velStatus.sensed_turret_position = (int) (360 * sensed_drive_angle);
-    velStatus.sensed_turret_velocity = (int) (sensed_MT_v * 100);
-    velStatus.desired_turret_velocity = (int) (desired_MT_v * 100);
-    velStatus.pid_error = (int)(roundf(pidError * 100));  
-    pub.publish(&velStatus);
+//    velStatus.sensed_t_motor_enc_value = decoder_count_MT;
+//    velStatus.sensed_t_motor_velocity = (int) (((float(turret_tick_change)/1023))/(t_elapsed/1000) * 1000);
+//    velStatus.sensed_turret_position = (int) (360 * sensed_drive_angle);
+//    velStatus.sensed_turret_velocity = (int) (sensed_MT_v * 100);
+//    velStatus.desired_turret_velocity = (int) (desired_MT_v * 100);
+//    velStatus.pid_error = (int)(roundf(pidError * 100));  
+//    pub.publish(&velStatus);
     
     nh.spinOnce();
     

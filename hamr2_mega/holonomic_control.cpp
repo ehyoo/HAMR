@@ -9,8 +9,8 @@
 // #define DIM_R 1
 
 #define DIM_A 0.165
-#define DIM_B 0.17
-#define DIM_R 0.006
+#define DIM_B 0.165
+#define DIM_R WHEEL_RADIUS
 
 // this value will determine how quickly to change the setpoint
 float max_linear_acceleration = .1;
